@@ -172,7 +172,8 @@ CacheCntlr::CacheCntlr(MemComponent::component_t mem_component,
 //------------------------------PRAK-LOG---SHARED-CACHE
 
 	m_master->m_slab_cntlr = new SlabCntlr(name,"perf_model/" + cache_params.configName,
-            m_core_id,            Sim()->getFaultinjectionManager()
+            m_core_id,cache_params,
+            Sim()->getFaultinjectionManager()
                ? Sim()->getFaultinjectionManager()->getFaultInjector(m_core_id_master,mem_component)
                : NULL);
 
