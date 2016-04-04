@@ -30,6 +30,12 @@ public:
 
 		~SlabCntlr();
 private:
+		Cache **slab_slot_0;
+		Cache **slab_slot_1;
+
+		bool **isSlabOn_0;
+		bool **isSlabOn_1;
+
 		UInt32 m_num_slots;
 		UInt32 m_num_slabs_per_slot;
 		UInt32 m_num_sets_per_slab;
