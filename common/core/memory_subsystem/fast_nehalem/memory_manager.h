@@ -21,7 +21,7 @@ namespace FastNehalem
       public:
          MemoryManager(Core* core, Network* network, ShmemPerfModel* shmem_perf_model);
          ~MemoryManager();
-
+		 virtual Dyn_reconf * getReconfigurator(core_id_t m_core_id){return NULL;}
          SubsecondTime coreInitiateMemoryAccessFast(
                bool use_icache,
                Core::mem_op_t mem_op_type,

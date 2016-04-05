@@ -64,6 +64,9 @@ MemoryManager::MemoryManager(Core* core,
    UInt32 dram_directory_home_lookup_param = 0;
    ComponentLatency dram_directory_cache_access_time(global_domain, 0);
 
+	reconf_0= new Dyn_reconf();
+	reconf_1= new Dyn_reconf();
+
    try
    {
       m_cache_block_size = Sim()->getCfg()->getInt("perf_model/l1_icache/cache_block_size");

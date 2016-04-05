@@ -88,6 +88,8 @@ class MemoryManagerBase
       // Modeling
       virtual UInt32 getModeledLength(const void* pkt_data) = 0;
 
+		 virtual Dyn_reconf * getReconfigurator(core_id_t m_core_id)=0;
+
       Core* getCore() { return m_core; }
 
       virtual void sendMsg(PrL1PrL2DramDirectoryMSI::ShmemMsg::msg_t msg_type, MemComponent::component_t sender_mem_component, MemComponent::component_t receiver_mem_component, core_id_t requester, core_id_t receiver, IntPtr address, Byte* data_buf = NULL, UInt32 data_length = 0, HitWhere::where_t where = HitWhere::UNKNOWN, ShmemPerf *perf = NULL, ShmemPerfModel::Thread_t thread_num = ShmemPerfModel::NUM_CORE_THREADS) = 0;

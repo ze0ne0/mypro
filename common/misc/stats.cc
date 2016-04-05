@@ -175,7 +175,7 @@ StatsManager::registerMetric(StatsMetricBase *metric)
 
 //--------------PRAK-LOG------------
 
-	PRAK_LOG("REGISTRING OBJECT=%s as metric=%s ",metric->objectName.c_str() , metric->metricName.c_str());
+	//PRAK_LOG("REGISTRING OBJECT=%s as metric=%s ",metric->objectName.c_str() , metric->metricName.c_str());
 
 //--------------PRAK-LOG---ENDS--HERE
 

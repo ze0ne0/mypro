@@ -8,6 +8,7 @@
 #include "address_home_lookup.h"
 #include "../pr_l1_pr_l2_dram_directory_msi/shmem_msg.h"
 #include "mem_component.h"
+#include "dyn_reconf.h" 
 #include "semaphore.h"
 #include "fixed_types.h"
 #include "shmem_perf_model.h"
@@ -38,6 +39,10 @@ namespace ParametricDramDirectoryMSI
          AddressHomeLookup* m_dram_controller_home_lookup;
          TLB *m_itlb, *m_dtlb, *m_stlb;
          ComponentLatency m_tlb_miss_penalty;
+
+	 Dyn_reconf * reconf_0;
+	 Dyn_reconf * reconf_1;
+
          bool m_tlb_miss_parallel;
 
          core_id_t m_core_id_master;
@@ -101,6 +106,20 @@ namespace ParametricDramDirectoryMSI
 
          void enableModels();
          void disableModels();
+
+	 virtual Dyn_reconf * getReconfigurator(core_id_t m_core_id)
+	 {
+		if(m_core_id==0)
+		{
+			return reconf_0;
+		}
+		else if(m_core_id==1)
+		{
+			return reconf_1;
+		}
+		return NULL;
+	 }
+	
 
          core_id_t getShmemRequester(const void* pkt_data)
          { return ((PrL1PrL2DramDirectoryMSI::ShmemMsg*) pkt_data)->getRequester(); }

@@ -101,6 +101,10 @@ Core::Core(SInt32 id)
 
 //--------------------
 
+	
+
+
+
 
 	   Sim()->getStatsManager()->logTopology("hwcontext", id, id);
 
@@ -119,7 +123,7 @@ Core::Core(SInt32 id)
    m_performance_model = PerformanceModel::create(this);
 
 
-	reconfigurator= new Dyn_reconf();
+	reconfigurator= m_memory_manager->getReconfigurator(id);
 	if(reconfigurator==NULL)
 	{
 		PRAK_LOG("Can't initialize dyn_reconf\n");
@@ -128,6 +132,7 @@ Core::Core(SInt32 id)
 	{
 		PRAK_LOG("Initialized dyn_reconf\n");		
 	}
+
 
 	PRAK_LOG("Core construtor ends here");
 }
@@ -152,10 +157,10 @@ Core::~Core()
       delete m_clock_skew_minimization_client;
    delete m_network;
 
-	if(reconfigurator)		
-	{	PRAK_LOG("Deleting reconfigurator");
-		delete reconfigurator;
-	}
+//	if(reconfigurator)		
+//	{	PRAK_LOG("Deleting reconfigurator");
+//		delete reconfigurator;
+//	}
 }
 
 void Core::enablePerformanceModels()
