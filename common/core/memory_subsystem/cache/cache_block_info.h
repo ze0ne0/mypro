@@ -1,6 +1,8 @@
 #ifndef __CACHE_BLOCK_INFO_H__
 #define __CACHE_BLOCK_INFO_H__
 
+class SlabCntlr;
+
 #include "fixed_types.h"
 #include "cache_state.h"
 #include "cache_base.h"
@@ -67,6 +69,7 @@ class CacheCntlr
    public:
       virtual bool isInLowerLevelCache(CacheBlockInfo *block_info) { return false; }
       virtual void incrementQBSLookupCost() {}
+      virtual SlabCntlr * getSlabCntlr()=0;	
 };
 
 #endif /* __CACHE_BLOCK_INFO_H__ */

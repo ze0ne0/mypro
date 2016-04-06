@@ -391,6 +391,10 @@ namespace ParametricDramDirectoryMSI
                bool count);
          void updateHits(Core::mem_op_t mem_op_type, UInt64 hits);
 
+
+	virtual SlabCntlr *getSlabCntlr()
+	{return m_master->m_slab_cntlr;}
+
          // Notify next level cache of so it can update its sharing set
          void notifyPrevLevelInsert(core_id_t core_id, MemComponent::component_t mem_component, IntPtr address);
          void notifyPrevLevelEvict(core_id_t core_id, MemComponent::component_t mem_component, IntPtr address);

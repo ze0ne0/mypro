@@ -64,8 +64,7 @@ MemoryManager::MemoryManager(Core* core,
    UInt32 dram_directory_home_lookup_param = 0;
    ComponentLatency dram_directory_cache_access_time(global_domain, 0);
 
-	reconf_0= new Dyn_reconf();
-	reconf_1= new Dyn_reconf();
+	
 
    try
    {
@@ -407,6 +406,10 @@ MemoryManager::MemoryManager(Core* core,
 
    // Set up core topology information
    getCore()->getTopologyInfo()->setup(smt_cores, cache_parameters[m_last_level_cache].shared_cores);
+
+	reconf_0= new Dyn_reconf(getCacheCntlrAt(0,MemComponent::L2_CACHE));
+	reconf_1= new Dyn_reconf(getCacheCntlrAt(0,MemComponent::L2_CACHE));
+
 }
 
 MemoryManager::~MemoryManager()

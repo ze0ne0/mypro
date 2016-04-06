@@ -30,18 +30,24 @@ public:
 
 		~SlabCntlr();
 private:
-		Cache **slab_slot_0;
-		Cache **slab_slot_1;
+		Cache ***slab_slot;
 
-		bool **isSlabOn_0;
-		bool **isSlabOn_1;
+		bool ***isSlabOn;
+
+		UInt32 ***access;
+
+		UInt32 **slot_access;
+
+		
 
 		UInt32 m_num_slots;
+		UInt32 m_num_cores;
 		UInt32 m_num_slabs_per_slot;
 		UInt32 m_num_sets_per_slab;
 		UInt32 m_slab_assoc;
 	
-//	protected:
+public:
+		void reconfigure(core_id_t core_id);
 };
 
 #endif

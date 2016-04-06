@@ -278,7 +278,7 @@ Core::readInstructionMemory(IntPtr address, UInt32 instruction_size)
 
 //------------PRAK------------
 	p_count+=1;
-	reconfigurator->incrementCount(address);
+	reconfigurator->incrementCount(address,m_core_id);
 	//fprintf(fptr,"0x%x:%lld\n",address,p_count);
 
 //------------------------------
