@@ -95,8 +95,8 @@ CacheSetLRU::moveToMRU(UInt32 accessed_index)
    m_lru_bits[accessed_index] = 0;
 }
 
-CacheSetInfoLRU::CacheSetInfoLRU(String name, String cfgname, core_id_t core_id, UInt32 associativity, UInt8 num_attempts,bool ifLeader)
-   : CacheSetInfo(ifLeader)
+CacheSetInfoLRU::CacheSetInfoLRU(String name, String cfgname, core_id_t core_id, UInt32 associativity, UInt8 num_attempts)
+   : CacheSetInfo()
    , m_associativity(associativity)
    , m_attempts(NULL)
 {
@@ -105,10 +105,8 @@ CacheSetInfoLRU::CacheSetInfoLRU(String name, String cfgname, core_id_t core_id,
    {
       m_access[i] = 0;
 	//PRAK-LOG	
-	if(!ifLeader)
-	{
+	
       		//registerStatsMetric(name, core_id, String("access-mru-")+itostr(i), &m_access[i]);
-	}
    }
 
    if (num_attempts > 1)
@@ -117,11 +115,7 @@ CacheSetInfoLRU::CacheSetInfoLRU(String name, String cfgname, core_id_t core_id,
       for(UInt32 i = 0; i < num_attempts; ++i)
       {
          m_attempts[i] = 0;
-	//PRAK-LOG	
-	if(!ifLeader)
-	{
         	// registerStatsMetric(name, core_id, String("qbs-attempt-")+itostr(i), &m_attempts[i]);
-	}
       }
    }
 };

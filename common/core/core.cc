@@ -324,7 +324,7 @@ void Core::accessMemoryFast(bool icache, mem_op_t mem_op_type, IntPtr address)
    if (m_cheetah_manager && icache == false)
       m_cheetah_manager->access(mem_op_type, address);
 
-   SubsecondTime latency = getMemoryManager()->coreInitiateMemoryAccessFast(icache, mem_op_type, address);
+   SubsecondTime latency = getMemoryManager()->coreInitiateMemoryAccessFast(m_core_id,icache, mem_op_type, address);
 
    if (latency > SubsecondTime::Zero())
       m_performance_model->handleMemoryLatency(latency, HitWhere::MISS);
@@ -421,7 +421,7 @@ Core::initiateMemoryAccess(MemComponent::component_t mem_component,
       if (m_cheetah_manager)
          m_cheetah_manager->access(mem_op_type, curr_addr_aligned);
 
-      HitWhere::where_t this_hit_where = getMemoryManager()->coreInitiateMemoryAccess(
+      HitWhere::where_t this_hit_where = getMemoryManager()->coreInitiateMemoryAccess(m_core_id,
                mem_component,
                lock_signal,
                mem_op_type,

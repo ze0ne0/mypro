@@ -26,68 +26,10 @@ Cache::Cache(
 {
 	PRAK_LOG("Allocating cache.cc by core=%d cach.cfg=%s",core_id,cfgname.c_str());
 
-//
-//----------------PRAK-LOG---------------
-	if(cache_type==CacheBase::SHARED_CACHE)
-	{
-		PRAK_LOG("Allocating num_sets=%d assoc=%d block_size=%d",num_sets,associativity,cache_block_size);
-
-		p_num_modules=-1;
-		p_sampling_ratio=64;
-
-		m_num_sets=num_sets;
-
-		if(m_num_sets==4096)
-		{
-			p_num_modules=8;
-		}
-		else if(m_num_sets==8192)
-		{
-			p_num_modules=16;
-		}
-		else if(m_num_sets==16384)
-		{
-			p_num_modules=32;
-		}
-		else
-		{
-			PRAK_LOG("Num of modules not assigned error");
-		}
-
-		if(p_num_modules!=-1)
-		{
-			isSubWayOn = new int *[p_num_modules];
-			L2Hits	   = new UInt64 * [p_num_modules];
-
-			p_module_size=m_num_sets/p_num_modules;
-			p_total_atds=m_num_sets/p_sampling_ratio;	//Note 64 is sampling ratio
-			p_atds_per_module=p_total_atds/p_num_modules;
-
-			for (int i = 0; i < p_num_modules; i++)
-			{
-				isSubWayOn[i] = new int[m_associativity];
-				L2Hits[i]     = new UInt64[m_associativity];
-			
-				for (UInt32 j = 0; j < m_associativity; j++)
-				{
-					isSubWayOn[i][j]=1;
-					L2Hits[i][j]=0;
-				}
-				
-			}
-			PRAK_LOG("is Subway On initialized");
-		}
-	}
-	else
-	{
-		PRAK_LOG("Creating set info");
-	}	
-//----------------PRAK-LOG--ENDS-HERE----
 
 
-
-   m_set_info = CacheSet::createCacheSetInfo(name, cfgname, core_id, replacement_policy, m_associativity,false);  //FOLLOWER SET
-   p_set_info = CacheSet::createCacheSetInfo(name, cfgname, core_id, replacement_policy, m_associativity,true);   // LEADER SET
+   m_set_info = CacheSet::createCacheSetInfo(name, cfgname, core_id, replacement_policy, m_associativity);  //FOLLOWER SET
+   p_set_info = CacheSet::createCacheSetInfo(name, cfgname, core_id, replacement_policy, m_associativity);   // LEADER SET
 
 	//PRAK_LOG("Calling cache set constrcutor");
    m_sets = new CacheSet*[m_num_sets];

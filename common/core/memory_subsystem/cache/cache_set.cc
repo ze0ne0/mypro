@@ -189,7 +189,7 @@ CacheSet::createCacheSet(String cfgname, core_id_t core_id,
 }
 
 CacheSetInfo*
-CacheSet::createCacheSetInfo(String name, String cfgname, core_id_t core_id, String replacement_policy, UInt32 associativity,bool ifLeader)
+CacheSet::createCacheSetInfo(String name, String cfgname, core_id_t core_id, String replacement_policy, UInt32 associativity)
 {
    CacheBase::ReplacementPolicy policy = parsePolicyType(replacement_policy);
    switch(policy)
@@ -198,7 +198,7 @@ CacheSet::createCacheSetInfo(String name, String cfgname, core_id_t core_id, Str
       case CacheBase::LRU_QBS:
       case CacheBase::SRRIP:
       case CacheBase::SRRIP_QBS:
-         return new CacheSetInfoLRU(name, cfgname, core_id, associativity, getNumQBSAttempts(policy, cfgname, core_id),ifLeader);
+         return new CacheSetInfoLRU(name, cfgname, core_id, associativity, getNumQBSAttempts(policy, cfgname, core_id));
       default:
          return NULL;
    }

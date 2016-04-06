@@ -34,15 +34,7 @@ class Cache : public CacheBase
 
       FaultInjector *m_fault_injector;
 
-//-----------------PRAK-LOG-----------------
-	int p_num_modules;   // flexiway number of modules: Q in paper
-	int ** isSubWayOn;	// specify if any way of particular module is on or off
-	UInt64 ** L2Hits;	// Hit count for leader sets
-	int p_module_size;
-	int p_atds_per_module;
-	int p_sampling_ratio;
-	int p_total_atds;
-//----------------PRAK-LOG-ENDS-HERE
+
 
       #ifdef ENABLE_SET_USAGE_HIST
       UInt64* m_set_usage_hist;

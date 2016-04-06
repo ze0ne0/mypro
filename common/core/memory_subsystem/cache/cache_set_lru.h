@@ -6,7 +6,7 @@
 class CacheSetInfoLRU : public CacheSetInfo
 {
    public:
-      CacheSetInfoLRU(String name, String cfgname, core_id_t core_id, UInt32 associativity, UInt8 num_attempts,bool ifLeader);
+      CacheSetInfoLRU(String name, String cfgname, core_id_t core_id, UInt32 associativity, UInt8 num_attempts);
       virtual ~CacheSetInfoLRU();
       void increment(UInt32 index)
       {

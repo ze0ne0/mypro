@@ -330,7 +330,7 @@ CacheCntlr::setDRAMDirectAccess(DramCntlrInterface* dram_cntlr, UInt64 num_outst
  *****************************************************************************/
 
 HitWhere::where_t
-CacheCntlr::processMemOpFromCore(
+CacheCntlr::processMemOpFromCore(core_id_t m_core_id,
       Core::lock_signal_t lock_signal,
       Core::mem_op_t mem_op_type,
       IntPtr ca_address, UInt32 offset,
@@ -499,7 +499,7 @@ LOG_ASSERT_ERROR(offset + data_length <= getCacheBlockSize(), "access until %u >
 	MYLOG("processMemOpFromCore l%d before next", m_mem_component);
 
 	//----PRAK_LOG();
-      hit_where = m_next_cache_cntlr->processShmemReqFromPrevCache(this, mem_op_type, ca_address, modeled, count, Prefetch::NONE, t_start, false);
+      hit_where = m_next_cache_cntlr->processShmemReqFromPrevCache(m_core_id,this, mem_op_type, ca_address, modeled, count, Prefetch::NONE, t_start, false);
       bool next_cache_hit = hit_where != HitWhere::MISS;
 MYLOG("processMemOpFromCore l%d next hit = %d", m_mem_component, next_cache_hit);
 
@@ -508,7 +508,7 @@ MYLOG("processMemOpFromCore l%d next hit = %d", m_mem_component, next_cache_hit)
       } else {
          /* last level miss, a message has been sent. */
 
-MYLOG("processMemOpFromCore l%d waiting for sent message", m_mem_component);
+PRAK_LOG("processMemOpFromCore l%d waiting for sent message", m_mem_component);
          #ifdef PRIVATE_L2_OPTIMIZATION
          releaseLock(ca_address);
          #else
@@ -526,7 +526,7 @@ MYLOG("processMemOpFromCore l%d got message reply", m_mem_component);
 
          /* have the next cache levels fill themselves with the new data */
 MYLOG("processMemOpFromCore l%d before next fill", m_mem_component);
-         hit_where = m_next_cache_cntlr->processShmemReqFromPrevCache(this, mem_op_type, ca_address, false, false, Prefetch::NONE, t_start, true);
+         hit_where = m_next_cache_cntlr->processShmemReqFromPrevCache(m_core_id,this, mem_op_type, ca_address, false, false, Prefetch::NONE, t_start, true);
 MYLOG("processMemOpFromCore l%d after next fill", m_mem_component);
          LOG_ASSERT_ERROR(hit_where != HitWhere::MISS,
             "Tried to read in next-level cache, but data is already gone");
@@ -757,7 +757,7 @@ CacheCntlr::doPrefetch(IntPtr prefetch_address, SubsecondTime t_start)
    MYLOG("prefetching %lx", prefetch_address);
    SubsecondTime t_before = getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD);
    getShmemPerfModel()->setElapsedTime(ShmemPerfModel::_USER_THREAD, t_start); // Start the prefetch at the same time as the original miss
-   HitWhere::where_t hit_where = processShmemReqFromPrevCache(this, Core::READ, prefetch_address, true, true, Prefetch::OWN, t_start, false);
+   HitWhere::where_t hit_where = processShmemReqFromPrevCache(0,this, Core::READ, prefetch_address, true, true, Prefetch::OWN, t_start, false);
 
    if (hit_where == HitWhere::MISS)
    {
@@ -767,7 +767,7 @@ CacheCntlr::doPrefetch(IntPtr prefetch_address, SubsecondTime t_start)
       waitForNetworkThread();
       wakeUpNetworkThread();
 
-      hit_where = processShmemReqFromPrevCache(this, Core::READ, prefetch_address, false, false, Prefetch::OWN, t_start, false);
+      hit_where = processShmemReqFromPrevCache(0,this, Core::READ, prefetch_address, false, false, Prefetch::OWN, t_start, false);
 
       LOG_ASSERT_ERROR(hit_where != HitWhere::MISS, "Line was not there after prefetch");
    }
@@ -782,7 +782,7 @@ CacheCntlr::doPrefetch(IntPtr prefetch_address, SubsecondTime t_start)
  *****************************************************************************/
 
 HitWhere::where_t
-CacheCntlr::processShmemReqFromPrevCache(CacheCntlr* requester, Core::mem_op_t mem_op_type, IntPtr address, bool modeled, bool count, Prefetch::prefetch_type_t isPrefetch, SubsecondTime t_issue, bool have_write_lock)
+CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* requester, Core::mem_op_t mem_op_type, IntPtr address, bool modeled, bool count, Prefetch::prefetch_type_t isPrefetch, SubsecondTime t_issue, bool have_write_lock)
 {
    #ifdef PRIVATE_L2_OPTIMIZATION
    bool have_write_lock_internal = have_write_lock;
@@ -792,12 +792,17 @@ CacheCntlr::processShmemReqFromPrevCache(CacheCntlr* requester, Core::mem_op_t m
       have_write_lock_internal = true;
    }
    #else
-   bool have_write_lock_internal = true;
+      __attribute__((unused)) bool have_write_lock_internal = true;
    #endif
 
-   bool cache_hit = operationPermissibleinCache(address, mem_op_type), sibling_hit = false, prefetch_hit = false;
+//-------------------------------------------------------------------------------------------------------------------------
+//------------------------------------L2 ACCESS---STARTS
+   bool cache_hit = operationPermissibleinCache(address, mem_op_type), sibling_hit = false;
    bool first_hit = cache_hit;
    HitWhere::where_t hit_where = HitWhere::MISS;
+
+__attribute__((unused))   SharedCacheBlockInfo* cache_block_info1 = m_master->m_slab_cntlr->getCacheBlockInfo_slab(address,m_core_id);
+
    SharedCacheBlockInfo* cache_block_info = getCacheBlockInfo(address);
 
    if (!cache_hit && m_perfect)
@@ -817,6 +822,8 @@ CacheCntlr::processShmemReqFromPrevCache(CacheCntlr* requester, Core::mem_op_t m
       cache_block_info = NULL;
       LOG_ASSERT_ERROR(m_next_cache_cntlr != NULL, "Cannot do passthrough on an LLC");
    }
+//------------------------------------------------------------L2 ACCESS ENDS HERE
+//-------------------------------------------------------------------------------------------------------------------------
 
    if (count)
    {
@@ -828,13 +835,6 @@ CacheCntlr::processShmemReqFromPrevCache(CacheCntlr* requester, Core::mem_op_t m
 
    if (cache_hit)
    {
-      if (isPrefetch == Prefetch::NONE && cache_block_info->hasOption(CacheBlockInfo::PREFETCH))
-      {
-         // This line was fetched by the prefetcher and has proven useful
-         stats.hits_prefetch++;
-         prefetch_hit = true;
-         cache_block_info->clearOption(CacheBlockInfo::PREFETCH);
-      }
       if (cache_block_info->hasOption(CacheBlockInfo::WARMUP) && Sim()->getInstrumentationMode() != InstMode::CACHE_ONLY)
       {
          stats.hits_warmup++;
@@ -950,20 +950,6 @@ CacheCntlr::processShmemReqFromPrevCache(CacheCntlr* requester, Core::mem_op_t m
 
       if (m_next_cache_cntlr)
       {
-         if (cache_block_info)
-            invalidateCacheBlock(address);
-
-         // let the next cache level handle it.
-         hit_where = m_next_cache_cntlr->processShmemReqFromPrevCache(this, mem_op_type, address, modeled, count, isPrefetch == Prefetch::NONE ? Prefetch::NONE : Prefetch::OTHER, t_issue, have_write_lock_internal);
-         if (hit_where != HitWhere::MISS)
-         {
-            cache_hit = true;
-            /* get the data for ourselves */
-            SubsecondTime t_now = getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD);
-            copyDataFromNextLevel(mem_op_type, address, modeled, t_now);
-            if (isPrefetch != Prefetch::NONE)
-               getCacheBlockInfo(address)->setOption(CacheBlockInfo::PREFETCH);
-         }
       }
       else // last-level cache
       {
@@ -998,6 +984,7 @@ CacheCntlr::processShmemReqFromPrevCache(CacheCntlr* requester, Core::mem_op_t m
             }
             else
             {
+		//PRAK_LOG("Hit in DRAM ");
                m_shmem_perf->reset(getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD), m_core_id);
 
                Byte data_buf[getCacheBlockSize()];
@@ -1015,10 +1002,6 @@ CacheCntlr::processShmemReqFromPrevCache(CacheCntlr* requester, Core::mem_op_t m
                updateUncoreStatistics(hit_where, getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD));
             }
          }
-         else
-         {
-            initiateDirectoryAccess(mem_op_type, address, isPrefetch != Prefetch::NONE, t_issue);
-         }
       }
    }
 
@@ -1030,15 +1013,11 @@ CacheCntlr::processShmemReqFromPrevCache(CacheCntlr* requester, Core::mem_op_t m
       /* Store completion time so we can detect overlapping accesses */
       if (modeled && !first_hit && !m_passthrough)
       {
+	//MSHR MEANS : MISS STATE HOLDING REGISTERS FOR OUTSTANDING MISSES
          ScopedLock sl(getLock());
          m_master->mshr[address] = make_mshr(t_issue, getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD));
          cleanupMshr();
       }
-   }
-
-   if (modeled && m_master->m_prefetcher)
-   {
-      trainPrefetcher(address, cache_hit, prefetch_hit, t_issue);
    }
 
    #ifdef PRIVATE_L2_OPTIMIZATION

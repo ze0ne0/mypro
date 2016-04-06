@@ -85,7 +85,7 @@ namespace ParametricDramDirectoryMSI
          CacheCntlr* getCacheCntlrAt(core_id_t core_id, MemComponent::component_t mem_component) { return m_all_cache_cntlrs[CoreComponentType(core_id, mem_component)]; }
          void setCacheCntlrAt(core_id_t core_id, MemComponent::component_t mem_component, CacheCntlr* cache_cntlr) { m_all_cache_cntlrs[CoreComponentType(core_id, mem_component)] = cache_cntlr; }
 
-         HitWhere::where_t coreInitiateMemoryAccess(
+         HitWhere::where_t coreInitiateMemoryAccess(core_id_t m_core_id,
                MemComponent::component_t mem_component,
                Core::lock_signal_t lock_signal,
                Core::mem_op_t mem_op_type,

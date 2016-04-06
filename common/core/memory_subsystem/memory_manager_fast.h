@@ -18,7 +18,7 @@ class MemoryManagerFast : public MemoryManagerBase
       {}
       virtual ~MemoryManagerFast() {}
 
-      HitWhere::where_t coreInitiateMemoryAccess(
+      HitWhere::where_t coreInitiateMemoryAccess(core_id_t m_core_id,
             MemComponent::component_t mem_component,
             Core::lock_signal_t lock_signal,
             Core::mem_op_t mem_op_type,
@@ -28,7 +28,7 @@ class MemoryManagerFast : public MemoryManagerBase
       {
          // Emulate slow interface by calling into fast interface
          assert(data_buf == NULL);
-         SubsecondTime latency = coreInitiateMemoryAccessFast(mem_component == MemComponent::L1_ICACHE ? true : false, mem_op_type, address);
+         SubsecondTime latency = coreInitiateMemoryAccessFast(m_core_id,mem_component == MemComponent::L1_ICACHE ? true : false, mem_op_type, address);
          getShmemPerfModel()->incrElapsedTime(latency,  ShmemPerfModel::_USER_THREAD);
          if (latency > SubsecondTime::Zero())
             return HitWhere::MISS;
@@ -36,7 +36,7 @@ class MemoryManagerFast : public MemoryManagerBase
             return HitWhere::where_t(mem_component);
       }
 
-      virtual SubsecondTime coreInitiateMemoryAccessFast(
+      virtual SubsecondTime coreInitiateMemoryAccessFast(core_id_t m_core_id,
             bool icache,
             Core::mem_op_t mem_op_type,
             IntPtr address) = 0;

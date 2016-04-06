@@ -42,14 +42,15 @@ class MemoryManagerBase
       {}
       virtual ~MemoryManagerBase() {}
 
-      virtual HitWhere::where_t coreInitiateMemoryAccess(
+      virtual HitWhere::where_t coreInitiateMemoryAccess(core_id_t m_core_id,
             MemComponent::component_t mem_component,
             Core::lock_signal_t lock_signal,
             Core::mem_op_t mem_op_type,
             IntPtr address, UInt32 offset,
             Byte* data_buf, UInt32 data_length,
             Core::MemModeled modeled) = 0;
-      virtual SubsecondTime coreInitiateMemoryAccessFast(
+
+      virtual SubsecondTime coreInitiateMemoryAccessFast(core_id_t m_core_id,
             bool icache,
             Core::mem_op_t mem_op_type,
             IntPtr address)
@@ -58,7 +59,7 @@ class MemoryManagerBase
          SubsecondTime initial_time = getCore()->getPerformanceModel()->getElapsedTime();
          getShmemPerfModel()->setElapsedTime(ShmemPerfModel::_USER_THREAD, initial_time);
 
-         coreInitiateMemoryAccess(
+         coreInitiateMemoryAccess(m_core_id,
                icache ? MemComponent::L1_ICACHE : MemComponent::L1_DCACHE,
                Core::NONE,
                mem_op_type,

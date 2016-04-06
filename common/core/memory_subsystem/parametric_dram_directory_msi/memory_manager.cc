@@ -452,7 +452,7 @@ MemoryManager::~MemoryManager()
 }
 
 HitWhere::where_t
-MemoryManager::coreInitiateMemoryAccess(
+MemoryManager::coreInitiateMemoryAccess(core_id_t m_core_id,
       MemComponent::component_t mem_component,
       Core::lock_signal_t lock_signal,
       Core::mem_op_t mem_op_type,
@@ -468,7 +468,7 @@ MemoryManager::coreInitiateMemoryAccess(
    else if (mem_component == MemComponent::L1_DCACHE && m_dtlb)
       accessTLB(m_dtlb, address, false, modeled);
 
-   return m_cache_cntlrs[mem_component]->processMemOpFromCore(
+   return m_cache_cntlrs[mem_component]->processMemOpFromCore(m_core_id,
          lock_signal,
          mem_op_type,
          address, offset,
