@@ -48,6 +48,9 @@ SlabCntlr::SlabCntlr(
 
 			for(UInt32 j=0;j<m_num_slabs_per_slot;j++)
 			{
+
+				PRAK_LOG("CREATING %s cfg:%s ",name.c_str(),cfg_name.c_str());
+
 				slab_slot[k][i][j]=new Cache(name,cfg_name,0,m_num_sets_per_slab,m_slab_assoc,64,r_policy,
 					    CacheBase::SHARED_CACHE,
 					    CacheBase::parseAddressHash(hash_function),fault_injector);	
@@ -84,6 +87,9 @@ SlabCntlr::~SlabCntlr()
 }
 
 //---------------------------------------------------------------------------------
+
+
+
 
 UInt32 
 SlabCntlr::getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id) const

@@ -30,7 +30,7 @@ void Dyn_reconf:: processAddress(IntPtr address,core_id_t core_id)
 		{
 			p_diff=p_base_addr-address;
 			p_diff=(p_diff>0)?p_diff:-p_diff;
-			PRAK_LOG("b:%x c-a %x diff:%d \n",p_base_addr,address,p_diff);	
+//			PRAK_LOG("b:%x c-a %x diff:%d \n",p_base_addr,address,p_diff);	
 	
 		if(state==STABLE)
 		{		
@@ -86,7 +86,7 @@ void Dyn_reconf:: processAddress(IntPtr address,core_id_t core_id)
 					p_base_addr=p_last_base_addr;	
 					p_base_count=p_last_base_count;	
 					state=STABLE;		
-					PRAK_LOG("reverting to prev base");
+				//	PRAK_LOG("reverting to prev base");
 				}
 				else
 				{

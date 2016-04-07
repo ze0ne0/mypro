@@ -69,7 +69,10 @@ class CacheCntlr
    public:
       virtual bool isInLowerLevelCache(CacheBlockInfo *block_info) { return false; }
       virtual void incrementQBSLookupCost() {}
-      virtual SlabCntlr * getSlabCntlr()=0;	
+      virtual SlabCntlr * getSlabCntlr()=0;
+/*
+virtual SharedCacheBlockInfo* insertCacheBlock_slab(IntPtr address, CacheState::cstate_t cstate, Byte* data_buf, core_id_t requester, ShmemPerfModel::Thread_t thread_num,core_id_t m_core_id)=0;
+*/	
 };
 
 #endif /* __CACHE_BLOCK_INFO_H__ */

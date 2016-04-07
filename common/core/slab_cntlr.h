@@ -49,6 +49,7 @@ private:
 	
 public:
 		void reconfigure(core_id_t core_id);
+		Cache **** getSlabSlotPtr(){return slab_slot;}
 
 //------------------------------------------------
 		         bool operationPermissibleinCache_slab(core_id_t m_core_id,
@@ -61,6 +62,9 @@ public:
          CacheState::cstate_t getCacheState_slab(IntPtr address,core_id_t m_core_id);
          CacheState::cstate_t getCacheState_slab(CacheBlockInfo *cache_block_info);
          SharedCacheBlockInfo* setCacheState_slab(IntPtr address,CacheState::cstate_t cstate,core_id_t m_core_id);
+
+
+
 
 
 //------------------------------------------------
