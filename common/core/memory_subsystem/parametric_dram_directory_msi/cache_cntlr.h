@@ -400,6 +400,8 @@ SharedCacheBlockInfo* insertCacheBlock_slab(IntPtr address, CacheState::cstate_t
 	virtual SlabCntlr *getSlabCntlr()
 	{return m_master->m_slab_cntlr;}
 
+	const char * getName(){ return MemComponentString(m_mem_component);}
+
          // Notify next level cache of so it can update its sharing set
          void notifyPrevLevelInsert(core_id_t core_id, MemComponent::component_t mem_component, IntPtr address);
          void notifyPrevLevelEvict(core_id_t core_id, MemComponent::component_t mem_component, IntPtr address);
