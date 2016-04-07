@@ -9,7 +9,6 @@
 #include "hooks_manager.h"
 #include "cache_atd.h"
 #include "shmem_perf.h"
-
 #include <cstring>
 
 // Define to allow private L2 caches not to take the stack lock.
@@ -580,7 +579,7 @@ MYLOG("processMemOpFromCore l%d after next fill", m_mem_component);
       }
    }
 
-
+	//PRAK_LOG("AK47");
    accessCache(mem_op_type, ca_address, offset, data_buf, data_length, hit_where == HitWhere::where_t(m_mem_component) && count);
 MYLOG("access done");
 
@@ -1087,6 +1086,7 @@ cache_block_info = insertCacheBlock_slab(address, mem_op_type == Core::READ ? Ca
 void
 CacheCntlr::notifyPrevLevelInsert(core_id_t core_id, MemComponent::component_t mem_component, IntPtr address)
 {
+	PRAK_LOG("called on:%s",getName());
    #ifdef ENABLE_TRACK_SHARING_PREVCACHES
    SharedCacheBlockInfo* cache_block_info = getCacheBlockInfo(address);
    assert(cache_block_info);
@@ -1331,6 +1331,7 @@ CacheCntlr::accessCache(
       Core::mem_op_t mem_op_type, IntPtr ca_address, UInt32 offset,
       Byte* data_buf, UInt32 data_length, bool update_replacement)
 {
+//	PRAK_LOG("AK24:%s",getName());
    switch (mem_op_type)
    {
       case Core::READ:
@@ -1346,6 +1347,7 @@ CacheCntlr::accessCache(
          if (m_cache_writethrough) {
             LOG_ASSERT_ERROR(m_next_cache_cntlr, "Writethrough enabled on last-level cache !?");
 MYLOG("writethrough start");
+	PRAK_LOG("ACCESS-WRITETHROUG");
             m_next_cache_cntlr->writeCacheBlock(ca_address, offset, data_buf, data_length, ShmemPerfModel::_USER_THREAD);
 MYLOG("writethrough done");
          }
@@ -1407,12 +1409,30 @@ CacheCntlr::invalidateCacheBlock(IntPtr address)
 }
 
 void
-CacheCntlr::retrieveCacheBlock(IntPtr address, Byte* data_buf, ShmemPerfModel::Thread_t thread_num, bool update_replacement)
+CacheCntlr::retrieveCacheBlock(IntPtr address, Byte* data_buf, ShmemPerfModel::Thread_t thread_num, bool update_replacement,core_id_t m_core_id)
 {
-	PRAK_LOG("RETRIVE:%s",getName());
+	/*
+	if(m_mem_component==MemComponent::L2_CACHE)
+	{	PRAK_LOG("RETRIVE:%s in l2",getName());
+
+		 UInt32 slab_index,slot_index;
+
+		slab_index=m_master->m_slab_cntlr->getSlab(address,slot_index,m_core_id);
+
+   __attribute__((unused)) SharedCacheBlockInfo* cache_block_info = (SharedCacheBlockInfo*)  
+	m_master->m_slab_cntlr->getSlabSlotPtr()[m_core_id][slot_index][slab_index]->accessSingleLine(
+      address, Cache::LOAD, data_buf, getCacheBlockSize(), getShmemPerfModel()->getElapsedTime(thread_num), update_replacement);
+
+   LOG_ASSERT_ERROR(cache_block_info != NULL, "Expected block to be there but it wasn't");
+
+	}
+	else */
+	{
    __attribute__((unused)) SharedCacheBlockInfo* cache_block_info = (SharedCacheBlockInfo*) m_master->m_cache->accessSingleLine(
       address, Cache::LOAD, data_buf, getCacheBlockSize(), getShmemPerfModel()->getElapsedTime(thread_num), update_replacement);
    LOG_ASSERT_ERROR(cache_block_info != NULL, "Expected block to be there but it wasn't");
+
+	}
 }
 
 
@@ -1952,20 +1972,41 @@ MYLOG(" ");
 
    // TODO: should we update access counter?
 
-   if (m_master->m_evicting_buf && (address == m_master->m_evicting_address)) {
+	
+
+   if (m_master->m_evicting_buf && (address == m_master->m_evicting_address)) 
+   {
       MYLOG("writing to evict buffer %lx", address);
-assert(offset==0);
-assert(data_length==getCacheBlockSize());
+
+	assert(offset==0);
+	assert(data_length==getCacheBlockSize());
+
+
       if (data_buf)
          memcpy(m_master->m_evicting_buf + offset, data_buf, data_length);
-   } else {
+
+   } 
+   else
+  {
+	//PRAK_LOG
+
+	UInt32 slab_index,slot_index;
+
+	slab_index=m_master->m_slab_cntlr->getSlab(address,slot_index,m_core_id);
+/*
+    __attribute__((unused)) SharedCacheBlockInfo* cache_block_info1 = (SharedCacheBlockInfo*) m_master->m_slab_cntlr->getSlabSlotPtr()[m_core_id][slot_index][slab_index]->accessSingleLine(
+         address + offset, Cache::STORE, data_buf, data_length, getShmemPerfModel()->getElapsedTime(thread_num), false);
+*/
+
       __attribute__((unused)) SharedCacheBlockInfo* cache_block_info = (SharedCacheBlockInfo*) m_master->m_cache->accessSingleLine(
          address + offset, Cache::STORE, data_buf, data_length, getShmemPerfModel()->getElapsedTime(thread_num), false);
+
       LOG_ASSERT_ERROR(cache_block_info, "writethrough expected a hit at next-level cache but got miss");
       LOG_ASSERT_ERROR(cache_block_info->getCState() == CacheState::MODIFIED, "Got writeback for non-MODIFIED line");
    }
 
-   if (m_cache_writethrough) {
+   if (m_cache_writethrough) 
+{	PRAK_LOG("WRITE2:%s",getName());
       acquireStackLock(true);
       m_next_cache_cntlr->writeCacheBlock(address, offset, data_buf, data_length, thread_num);
       releaseStackLock(true);
