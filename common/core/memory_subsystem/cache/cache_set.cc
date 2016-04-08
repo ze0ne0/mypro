@@ -101,6 +101,25 @@ CacheSet::find_slab(UInt32 set_index,UInt32 dst_slab)
    return NULL;
 }
 
+CacheBlockInfo*
+CacheSet::find_slab_mod(UInt32 set_index)
+{
+   for (SInt32 index = m_associativity-1; index >= 0; index--)
+   {
+      if (m_cache_block_info_array[index]->isValid() &&  CacheState::MODIFIED==m_cache_block_info_array[index]->getCState())
+      {
+			return (m_cache_block_info_array[index]);		
+      }
+      else
+      {
+		m_cache_block_info_array[index]->invalidate();
+      }
+   }
+   return NULL;
+}
+
+
+
 bool
 CacheSet::invalidate(IntPtr& tag)
 {

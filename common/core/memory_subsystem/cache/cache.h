@@ -67,6 +67,7 @@ class Cache : public CacheBase
 
       CacheBlockInfo* peekSingleLine(IntPtr addr);
 CacheBlockInfo* peekSingleLine_slab(UInt32 set_index,UInt32 dst_slab);
+CacheBlockInfo* peekSingleLine_slab_mod(UInt32 set_index);
 
       CacheBlockInfo* peekBlock(UInt32 set_index, UInt32 way) const { return m_sets[set_index]->peekBlock(way); }
 

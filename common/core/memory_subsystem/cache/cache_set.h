@@ -71,6 +71,8 @@ CacheBlockInfo* find_slab(UInt32 set_index,UInt32 dst_slab);
       virtual void updateReplacementIndex(UInt32) = 0;
 
       bool isValidReplacement(UInt32 index);
+CacheBlockInfo* find_slab_mod(UInt32 set_index);
+
 };
 
 #endif /* CACHE_SET_H */

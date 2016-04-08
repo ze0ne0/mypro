@@ -116,11 +116,13 @@ SlabCntlr::~SlabCntlr()
 UInt32 
 SlabCntlr::getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id) const
 {
-	UInt32 g_set_index=(addr>>6) % 64;
+	UInt32 g_set_index=addr>>6;//eliminate 6 bit block offset;
 
-	slot_index=g_set_index>>6;
+	slot_index=g_set_index>>6;//eliminate 2 bit slab + 4 bit local set_index
+	slot_index=slot_index % 64 ; // take least significant 6 bits
 
-	g_set_index=g_set_index>>4;
+	g_set_index=g_set_index>>4;//eliminate 4 bit local index ,now slab index + slot + tag remaining
+	g_set_index=g_set_index % 4; //take least significant two bits;
 
 	if(isSlabOn[m_core_id][slot_index][g_set_index])
 		return g_set_index;
@@ -161,17 +163,6 @@ SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
          LOG_PRINT_ERROR("Unsupported mem_op_type: %u", mem_op_type);
          break;
    }
-/*
-	if(block_info==NULL)
-	{
-		    PRAK_LOG("Miss:address %lx state %c: permissible %d", address, CStateString(cstate), cache_hit);
-	}
-
-	else
-	{
-		    PRAK_LOG("Hit: address %lx state %c: permissible %d", address, CStateString(cstate), cache_hit);
-	}
-*/	
 
 //   MYLOG("address %lx state %c: permissible %d", address, CStateString(cstate), cache_hit);
 

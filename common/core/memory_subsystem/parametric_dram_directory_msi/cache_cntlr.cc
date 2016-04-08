@@ -1401,13 +1401,8 @@ CacheCntlr:: slab_transfer(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,U
 
 void
 CacheCntlr:: slab_transfer_off(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,UInt32 dst_slab)
-{
-/*	
-Cache **** slab_slot=m_master->m_slab_cntlr->getSlabSlotPtr();
-	bool eviction;
-	IntPtr evict_address;
-	SharedCacheBlockInfo evict_block_info;
-	Byte evict_buf[getCacheBlockSize()];
+{	
+	Cache **** slab_slot=m_master->m_slab_cntlr->getSlabSlotPtr();
 	Byte data_buf[getCacheBlockSize()];
 	bool ****a_pattern=m_master->m_slab_cntlr->getPattern();
 	CacheBlockInfo* cache_block_info;
@@ -1417,29 +1412,26 @@ Cache **** slab_slot=m_master->m_slab_cntlr->getSlabSlotPtr();
 		{
 			for(UInt32 j=0;j<4;j++)
 			{
-				cache_block_info=slab_slot[core_id][slot_index][src_slab]->peekSingleLine_slab(i,dst_slab);
-				
+				//this will invalidate the non-modified block
 				cache_block_info=slab_slot[core_id][slot_index][src_slab]->peekSingleLine_slab_mod(i);
-
 				if(cache_block_info==NULL)
-				{	//No further  cache block for dest slab. We are done with this set
+				{	//No further  modified cache block src slab. We are done with this set
 					break;
 				}
 				else
 				{
-				        IntPtr insert_addr =slab_slot[core_id][slot_index][dst_slab]->tagToAddress(cache_block_info->getTag());
+			       IntPtr insert_addr =slab_slot[core_id][slot_index][dst_slab]->tagToAddress(cache_block_info->getTag());
+				// Tag is 22 bits + 4 bit set _index + 6 bit offset
+				// so shift set_idex to its position i.e 6 bit from right and or with tag; 
 
-					slab_slot[core_id][slot_index][src_slab]->invalidateSingleLine(insert_addr);
+				insert_addr= insert_addr | (i<<6) ;
 
-				slab_slot[core_id][slot_index][dst_slab]->insertSingleLine(insert_addr, data_buf,&eviction, &evict_address, &evict_block_info, evict_buf,getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD), this);
-
-   				 m_master->m_slab_cntlr->setCacheState_slab(insert_addr,getCacheState(cache_block_info),core_id);	
-				   
+			   __attribute__((unused))	SharedCacheBlockInfo* variable=insertCacheBlock_slab(insert_addr,CacheState::MODIFIED,data_buf,
+				core_id,ShmemPerfModel::_USER_THREAD,core_id);			   
 				}
 			}
 		}
 	}
-*/
 }
 
 

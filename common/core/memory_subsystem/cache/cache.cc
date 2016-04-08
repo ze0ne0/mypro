@@ -184,6 +184,12 @@ Cache::peekSingleLine_slab(UInt32 set_index,UInt32 dst_slab)
    return m_sets[set_index]->find_slab(set_index,dst_slab);
 }
 
+CacheBlockInfo*
+Cache::peekSingleLine_slab_mod(UInt32 set_index)
+{
+   return m_sets[set_index]->find_slab_mod(set_index);
+}
+
 
 
 void
