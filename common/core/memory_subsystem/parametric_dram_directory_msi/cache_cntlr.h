@@ -419,6 +419,8 @@ SharedCacheBlockInfo* insertCacheBlock_slab(IntPtr address, CacheState::cstate_t
          bool isLastLevel(void) { return ! m_next_cache_cntlr; }
          bool isShared(core_id_t core_id); //< Return true if core shares this cache
 
+	void getCacheState_slab(IntPtr address,core_id_t m_core_id);
+
          bool isInLowerLevelCache(CacheBlockInfo *block_info);
          void incrementQBSLookupCost();
 

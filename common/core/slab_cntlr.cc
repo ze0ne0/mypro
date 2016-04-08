@@ -85,10 +85,11 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 			if(access[core_id][i][j] > 128 && isSlabOn[core_id][i][j]==false)
 			{
 				isSlabOn[core_id][i][j]=true;
+
 				PRAK_LOG("TURN ON core:%d slot:%d slab :%d",core_id,i,j);
 				PRAK_LOG("DO BLOCK TRANSFER");
 
-				cntlr->slab_transfer(core_id,i,0,j);
+				//cntlr->slab_transfer(core_id,i,0,j);
 			}
 			else if(access[core_id][i][j] < 30  && isSlabOn[core_id][i][j]==true)
 			{
@@ -96,7 +97,7 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 
 				PRAK_LOG("TURN OFF core:%d slot:%d slab :%d",core_id,i,j);
 				PRAK_LOG("DO BLOCK TRANSFER OFF");
-				cntlr->slab_transfer_off(core_id,i,j,0);
+				//cntlr->slab_transfer_off(core_id,i,j,0);
 			}
 		}	
 	}
@@ -116,6 +117,8 @@ SlabCntlr::~SlabCntlr()
 UInt32 
 SlabCntlr::getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id) const
 {
+	//-------------WORKING CHECKED WITH SCI-CALCULATOR------------
+
 	UInt32 g_set_index=addr>>6;//eliminate 6 bit block offset;
 
 	slot_index=g_set_index>>6;//eliminate 2 bit slab + 4 bit local set_index
