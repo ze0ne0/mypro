@@ -6,10 +6,11 @@
 
 SlabCntlr::SlabCntlr(
 	    String name,String cfg_name,
-            core_id_t core_id,
+            core_id_t core_id,CacheCntlr *cc,
             FaultInjector *fault_injector,
             AddressHomeLookup *ahl)
 {
+	cntlr=cc;
 	m_num_slots=64;
 	m_num_slabs_per_slot=4;
 	m_num_sets_per_slab=16;
@@ -23,6 +24,7 @@ SlabCntlr::SlabCntlr(
 
 	slab_slot	= new Cache***	[m_num_cores];
 	isSlabOn 	= new bool**	[m_num_cores];
+	a_pattern 	= new bool***	[m_num_cores];
 	access		= new UInt32**	[m_num_cores];
 	slot_access 	= new UInt32*	[m_num_cores];
 
@@ -32,6 +34,7 @@ SlabCntlr::SlabCntlr(
 
 		slab_slot[k]	= new Cache**	[m_num_slots];
 		isSlabOn[k]	= new bool*	[m_num_slots];
+		a_pattern[k] 	= new bool**	[m_num_slots];
 		access[k]   	= new UInt32*	[m_num_slots];
 		slot_access[k] 	= new UInt32	[m_num_slots];
 
@@ -42,6 +45,8 @@ SlabCntlr::SlabCntlr(
 			slot_access[k][i]=0;
 
 			isSlabOn[k][i]=new bool [m_num_slabs_per_slot];
+
+			a_pattern[k][i]=new bool* [m_num_slabs_per_slot];
 
 			access[k][i]=new UInt32 [m_num_slabs_per_slot];
 
@@ -57,6 +62,12 @@ SlabCntlr::SlabCntlr(
 
 				isSlabOn[k][i][j]= j==0;
 				access[k][i][j]=0;
+				a_pattern[k][i][j]= new bool [m_num_sets_per_slab];
+				for(UInt32 s=0;s<m_num_sets_per_slab;s++)
+				{
+					a_pattern[k][i][j][s]=false;
+				}
+
 			}
 			//PRAK_LOG("ISSLABoN0 0:%d 1:%d 2:%d 3:%d ",isSlabOn_0[i][0],isSlabOn_0[i][1],isSlabOn_0[i][2],isSlabOn_0[i][3]);
 			//PRAK_LOG("ISSLABoN1 0:%d 1:%d 2:%d 3:%d ",isSlabOn_1[i][0],isSlabOn_1[i][1],isSlabOn_1[i][2],isSlabOn_1[i][3]);
@@ -73,8 +84,19 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 		{
 			if(access[core_id][i][j] > 128 && isSlabOn[core_id][i][j]==false)
 			{
+				isSlabOn[core_id][i][j]=true;
 				PRAK_LOG("TURN ON core:%d slot:%d slab :%d",core_id,i,j);
 				PRAK_LOG("DO BLOCK TRANSFER");
+
+				cntlr->slab_transfer(core_id,i,0,j);
+			}
+			else if(access[core_id][i][j] < 30  && isSlabOn[core_id][i][j]==true)
+			{
+				isSlabOn[core_id][i][j]=false;
+
+				PRAK_LOG("TURN OFF core:%d slot:%d slab :%d",core_id,i,j);
+				PRAK_LOG("DO BLOCK TRANSFER OFF");
+				cntlr->slab_transfer_off(core_id,i,j,0);
 			}
 		}	
 	}

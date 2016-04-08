@@ -422,6 +422,13 @@ SharedCacheBlockInfo* insertCacheBlock_slab(IntPtr address, CacheState::cstate_t
          bool isInLowerLevelCache(CacheBlockInfo *block_info);
          void incrementQBSLookupCost();
 
+
+	 CacheCntlr * getMyCntlr()
+	 { return this;}
+
+	virtual void slab_transfer(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,UInt32 dst_slab);
+	virtual void slab_transfer_off(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,UInt32 dst_slab);
+
          void enable() { m_master->m_cache->enable(); }
          void disable() { m_master->m_cache->disable(); }
 

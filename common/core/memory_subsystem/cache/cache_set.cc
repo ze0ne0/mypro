@@ -83,6 +83,24 @@ CacheSet::find(IntPtr tag, UInt32* line_index)
    return NULL;
 }
 
+CacheBlockInfo*
+CacheSet::find_slab(UInt32 set_index,UInt32 dst_slab)
+{
+   for (SInt32 index = m_associativity-1; index >= 0; index--)
+   {
+      if (m_cache_block_info_array[index]->isValid())
+      {
+	 if(m_cache_block_info_array[index]->getTag() % 4 == dst_slab)
+	 {
+			//m_cache_block_info_array[index]->invalidate();
+			return (m_cache_block_info_array[index]);		
+	 }	 
+
+      }
+   }
+   return NULL;
+}
+
 bool
 CacheSet::invalidate(IntPtr& tag)
 {

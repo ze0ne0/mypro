@@ -63,7 +63,10 @@ class Cache : public CacheBase
       void insertSingleLine(IntPtr addr, Byte* fill_buff,
             bool* eviction, IntPtr* evict_addr,
             CacheBlockInfo* evict_block_info, Byte* evict_buff, SubsecondTime now, CacheCntlr *cntlr = NULL);
+
+
       CacheBlockInfo* peekSingleLine(IntPtr addr);
+CacheBlockInfo* peekSingleLine_slab(UInt32 set_index,UInt32 dst_slab);
 
       CacheBlockInfo* peekBlock(UInt32 set_index, UInt32 way) const { return m_sets[set_index]->peekBlock(way); }
 

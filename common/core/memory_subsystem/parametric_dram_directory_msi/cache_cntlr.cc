@@ -179,7 +179,7 @@ CacheCntlr::CacheCntlr(MemComponent::component_t mem_component,
 		{
 		PRAK_LOG("Allocating shared cache once in mast_core_id=%d ",m_core_id);	
 		m_master->m_slab_cntlr = new SlabCntlr(name,"perf_model/" + cache_params.configName,
-            	m_core_id,            Sim()->getFaultinjectionManager()
+            	m_core_id,this,Sim()->getFaultinjectionManager()
                ? Sim()->getFaultinjectionManager()->getFaultInjector(m_core_id_master,mem_component)
                : NULL);
 		}
@@ -1359,6 +1359,88 @@ MYLOG("writethrough done");
    }
 }
 
+void
+CacheCntlr:: slab_transfer(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,UInt32 dst_slab)
+{
+	Cache **** slab_slot=m_master->m_slab_cntlr->getSlabSlotPtr();
+	bool eviction;
+	IntPtr evict_address;
+	SharedCacheBlockInfo evict_block_info;
+	Byte evict_buf[getCacheBlockSize()];
+	Byte data_buf[getCacheBlockSize()];
+	bool ****a_pattern=m_master->m_slab_cntlr->getPattern();
+	CacheBlockInfo* cache_block_info;
+	for(UInt32 i=0;i<16;i++)
+	{
+		if(a_pattern[core_id][slot_index][dst_slab][i]==true)
+		{
+			for(UInt32 j=0;j<4;j++)
+			{
+				cache_block_info=slab_slot[core_id][slot_index][src_slab]->peekSingleLine_slab(i,dst_slab);
+				
+
+				if(cache_block_info==NULL)
+				{	//No further  cache block for dest slab. We are done with this set
+					break;
+				}
+				else
+				{
+				        IntPtr insert_addr =slab_slot[core_id][slot_index][dst_slab]->tagToAddress(cache_block_info->getTag());
+
+					slab_slot[core_id][slot_index][src_slab]->invalidateSingleLine(insert_addr);
+
+				slab_slot[core_id][slot_index][dst_slab]->insertSingleLine(insert_addr, data_buf,&eviction, &evict_address, &evict_block_info, evict_buf,getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD), this);
+
+   				 m_master->m_slab_cntlr->setCacheState_slab(insert_addr,getCacheState(cache_block_info),core_id);	
+				   
+				}
+			}
+		}
+	}
+}
+
+void
+CacheCntlr:: slab_transfer_off(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,UInt32 dst_slab)
+{
+/*	
+Cache **** slab_slot=m_master->m_slab_cntlr->getSlabSlotPtr();
+	bool eviction;
+	IntPtr evict_address;
+	SharedCacheBlockInfo evict_block_info;
+	Byte evict_buf[getCacheBlockSize()];
+	Byte data_buf[getCacheBlockSize()];
+	bool ****a_pattern=m_master->m_slab_cntlr->getPattern();
+	CacheBlockInfo* cache_block_info;
+	for(UInt32 i=0;i<16;i++)
+	{
+		if(a_pattern[core_id][slot_index][dst_slab][i]==true)
+		{
+			for(UInt32 j=0;j<4;j++)
+			{
+				cache_block_info=slab_slot[core_id][slot_index][src_slab]->peekSingleLine_slab(i,dst_slab);
+				
+				cache_block_info=slab_slot[core_id][slot_index][src_slab]->peekSingleLine_slab_mod(i);
+
+				if(cache_block_info==NULL)
+				{	//No further  cache block for dest slab. We are done with this set
+					break;
+				}
+				else
+				{
+				        IntPtr insert_addr =slab_slot[core_id][slot_index][dst_slab]->tagToAddress(cache_block_info->getTag());
+
+					slab_slot[core_id][slot_index][src_slab]->invalidateSingleLine(insert_addr);
+
+				slab_slot[core_id][slot_index][dst_slab]->insertSingleLine(insert_addr, data_buf,&eviction, &evict_address, &evict_block_info, evict_buf,getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD), this);
+
+   				 m_master->m_slab_cntlr->setCacheState_slab(insert_addr,getCacheState(cache_block_info),core_id);	
+				   
+				}
+			}
+		}
+	}
+*/
+}
 
 
 
@@ -1990,9 +2072,9 @@ MYLOG(" ");
   {
 	//PRAK_LOG
 
-	UInt32 slab_index,slot_index;
+	__attribute__((unused)) UInt32 slab_index,slot_index;
 
-	slab_index=m_master->m_slab_cntlr->getSlab(address,slot_index,m_core_id);
+		slab_index=m_master->m_slab_cntlr->getSlab(address,slot_index,m_core_id);
 /*
     __attribute__((unused)) SharedCacheBlockInfo* cache_block_info1 = (SharedCacheBlockInfo*) m_master->m_slab_cntlr->getSlabSlotPtr()[m_core_id][slot_index][slab_index]->accessSingleLine(
          address + offset, Cache::STORE, data_buf, data_length, getShmemPerfModel()->getElapsedTime(thread_num), false);

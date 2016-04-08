@@ -25,15 +25,17 @@ class SlabCntlr
 public:
 		SlabCntlr(
 	    String name,String cfg_name,
-            core_id_t core_id,
+            core_id_t core_id,CacheCntlr *cc,
             FaultInjector *fault_injector = NULL,
             AddressHomeLookup *ahl = NULL);
 
 		~SlabCntlr();
 private:
+		CacheCntlr *cntlr;
 		Cache ****slab_slot;
 
 		bool ***isSlabOn;
+		bool ****a_pattern;
 
 		UInt32 ***access;
 
@@ -56,6 +58,11 @@ public:
                IntPtr address, Core::mem_op_t mem_op_type, CacheBlockInfo **cache_block_info = NULL);
 
 		UInt32 getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id) const;
+
+
+		bool **** getPattern()
+		{ return a_pattern;}
+
 
 
          SharedCacheBlockInfo* getCacheBlockInfo_slab(IntPtr address,core_id_t m_core_id);
