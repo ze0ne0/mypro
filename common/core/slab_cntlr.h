@@ -51,6 +51,7 @@ private:
 		UInt32 m_num_sets_per_slab;
 		UInt32 m_slab_assoc;
 
+		UInt32 m_block_transfer;
 
 		UInt32 m_log_blocksize;
 		UInt32 m_log_num_slabs_per_slot;

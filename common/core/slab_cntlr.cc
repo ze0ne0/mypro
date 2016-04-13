@@ -11,6 +11,9 @@ SlabCntlr::SlabCntlr(
             AddressHomeLookup *ahl)
 {
 	cntlr=cc;
+
+
+	m_block_transfer=0;
 	m_num_slots=64;
 	m_num_slabs_per_slot=4;
 	m_num_sets_per_slab=16;
@@ -83,7 +86,8 @@ SlabCntlr::SlabCntlr(
 
 void
 SlabCntlr:: reconfigure(core_id_t core_id)
-{			
+{		
+	PRAK_LOG("In reconfiguration");	
 	for(UInt32 i=0;i< m_num_slots;i++)
 	{
 		for(UInt32 j=0;j< m_num_slabs_per_slot;j++)
@@ -95,7 +99,7 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 				PRAK_LOG("TURN ON core:%d slot:%d slab :%d",core_id,i,j);
 				PRAK_LOG("DO BLOCK TRANSFER");
 
-				//cntlr->slab_transfer(core_id,i,0,j);
+				m_block_transfer += cntlr->slab_transfer(core_id,i,0,j);
 			}
 			else if(access[core_id][i][j] < 30  && isSlabOn[core_id][i][j]==true)
 			{
@@ -103,10 +107,13 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 
 				PRAK_LOG("TURN OFF core:%d slot:%d slab :%d",core_id,i,j);
 				PRAK_LOG("DO BLOCK TRANSFER OFF");
-				//cntlr->slab_transfer_off(core_id,i,j,0);
+				m_block_transfer += cntlr->slab_transfer_off(core_id,i,j,0);
 			}
 		}	
 	}
+
+	PRAK_LOG("BLK_TRNSFER:%d",m_block_transfer);
+	m_block_transfer=0;
 }
 
 
@@ -248,7 +255,9 @@ SharedCacheBlockInfo*
 SlabCntlr::setCacheState_slab(IntPtr address,CacheState::cstate_t cstate,core_id_t m_core_id)
 {
    SharedCacheBlockInfo* cache_block_info = getCacheBlockInfo_slab(address,m_core_id);
-   cache_block_info->setCState(cstate);
+	if(cache_block_info)
+	   cache_block_info->setCState(cstate);
+	
    return cache_block_info;
 }
 //------------------------------------------------------------------------------------

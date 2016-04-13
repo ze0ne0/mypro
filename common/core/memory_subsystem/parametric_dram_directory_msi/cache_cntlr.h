@@ -419,7 +419,7 @@ SharedCacheBlockInfo* insertCacheBlock_slab(IntPtr address, CacheState::cstate_t
          bool isLastLevel(void) { return ! m_next_cache_cntlr; }
          bool isShared(core_id_t core_id); //< Return true if core shares this cache
 
-	void getCacheState_slab(IntPtr address,core_id_t m_core_id);
+	CacheState::cstate_t getCacheState_slab(IntPtr address,core_id_t m_core_id);
 
          bool isInLowerLevelCache(CacheBlockInfo *block_info);
          void incrementQBSLookupCost();
@@ -428,8 +428,8 @@ SharedCacheBlockInfo* insertCacheBlock_slab(IntPtr address, CacheState::cstate_t
 	 CacheCntlr * getMyCntlr()
 	 { return this;}
 
-	virtual void slab_transfer(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,UInt32 dst_slab);
-	virtual void slab_transfer_off(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,UInt32 dst_slab);
+	virtual UInt32 slab_transfer(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,UInt32 dst_slab);
+	virtual UInt32 slab_transfer_off(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,UInt32 dst_slab);
 
          void enable() { m_master->m_cache->enable(); }
          void disable() { m_master->m_cache->disable(); }
