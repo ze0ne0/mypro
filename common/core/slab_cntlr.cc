@@ -18,7 +18,13 @@ SlabCntlr::SlabCntlr(
 	String r_policy="lru";
 	String hash_function="mod";
 	m_num_cores=2;
-	
+	L2_access=0;L2_hits=0;
+
+//---------------------------------------------------------------------------------
+	m_log_blocksize = floorLog2(64);
+	m_log_num_slabs_per_slot=floorLog2(m_num_slabs_per_slot);
+	m_log_num_sets_per_slab=floorLog2(m_num_sets_per_slab);
+//------------------------------------------------------------------------------------
 	PRAK_LOG("Initializing slab controller");
 
 
@@ -106,7 +112,8 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 
 SlabCntlr::~SlabCntlr()
 {
-
+	PRAK_LOG("Number of L2-access %d ",L2_access);
+	PRAK_LOG("Number of L2-hits %lld ",L2_hits);
 }
 
 //---------------------------------------------------------------------------------
@@ -119,13 +126,13 @@ SlabCntlr::getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id) con
 {
 	//-------------WORKING CHECKED WITH SCI-CALCULATOR------------
 
-	UInt32 g_set_index=addr>>6;//eliminate 6 bit block offset;
+	UInt32 g_set_index=addr>>m_log_blocksize;//eliminate 6 bit block offset;
 
-	slot_index=g_set_index>>6;//eliminate 2 bit slab + 4 bit local set_index
-	slot_index=slot_index % 64 ; // take least significant 6 bits
+	slot_index=g_set_index>>(m_log_num_slabs_per_slot + m_log_num_sets_per_slab);//eliminate 2 bit slab + 4 bit local set_index
+	slot_index=slot_index % m_num_slots ; // take least significant 6 bits
 
-	g_set_index=g_set_index>>4;//eliminate 4 bit local index ,now slab index + slot + tag remaining
-	g_set_index=g_set_index % 4; //take least significant two bits;
+	g_set_index=g_set_index>> m_log_num_sets_per_slab;//eliminate 4 bit local index ,now slab index + slot + tag remaining
+	g_set_index=g_set_index % m_num_slabs_per_slot; //take least significant two bits;
 
 	if(isSlabOn[m_core_id][slot_index][g_set_index])
 		return g_set_index;
@@ -138,7 +145,7 @@ bool
 SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
                IntPtr address, Core::mem_op_t mem_op_type, CacheBlockInfo **cache_block_info)
 {
- 	CacheBlockInfo *block_info = getCacheBlockInfo_slab(address,m_core_id);
+ 	CacheBlockInfo *block_info = getCacheBlockInfo_slab(address,m_core_id,true);
    // returns NULL if block doesn't exist in cache
 
    if (cache_block_info != NULL)
@@ -146,7 +153,10 @@ SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
 	 
 
 ///*
-	
+	a_lock.acquire();
+	L2_access+=1;
+	a_lock.release();
+
 
    bool cache_hit = false;
    CacheState::cstate_t cstate = getCacheState_slab(block_info);
@@ -169,17 +179,53 @@ SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
 
 //   MYLOG("address %lx state %c: permissible %d", address, CStateString(cstate), cache_hit);
 
-
+	if(cache_hit)
+	{
+		c_lock.acquire();
+			L2_hits+=1;
+		c_lock.release();
+	}
+	
    return cache_hit;		
 }
 
 
 SharedCacheBlockInfo*
-SlabCntlr::getCacheBlockInfo_slab(IntPtr address,core_id_t m_core_id)
+SlabCntlr::getCacheBlockInfo_slab(IntPtr address,core_id_t m_core_id,bool record_stat)
 {
-	UInt32 slab_index,slot_index;
-	slab_index=getSlab(address,slot_index,m_core_id);
+	UInt32 slab_index,slot_index,set_index;
 
+	UInt32 g_set_index=address>>m_log_blocksize;//eliminate 6 bit block offset;
+
+	slot_index=g_set_index>>(m_log_num_slabs_per_slot + m_log_num_sets_per_slab);//eliminate 2 bit slab + 4 bit local set_index
+
+	slot_index=slot_index % m_num_slabs_per_slot ; // take least significant 6 bits
+
+	set_index= g_set_index % m_num_sets_per_slab;
+
+	g_set_index=g_set_index>>m_log_num_sets_per_slab;//eliminate 4 bit local index ,now slab index + slot + tag remaining
+	g_set_index=g_set_index % m_num_slabs_per_slot; //take least significant two bits;
+
+
+	if(record_stat)
+	{
+		b_lock.acquire();
+			slot_access[m_core_id][slot_index]+=1;
+			access[m_core_id][slot_index][g_set_index]+=1;
+			a_pattern[m_core_id][slot_index][g_set_index][set_index]=true;
+		b_lock.release();
+	}
+
+	if(isSlabOn[m_core_id][slot_index][g_set_index])
+	{
+		slab_index=g_set_index;
+	}
+	else
+	{
+		slab_index=0;
+	}
+
+	
    return (SharedCacheBlockInfo*) slab_slot[m_core_id][slot_index][slab_index]->peekSingleLine(address);
 }
 

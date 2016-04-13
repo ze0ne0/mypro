@@ -1370,11 +1370,15 @@ CacheCntlr:: slab_transfer(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,U
 	bool ****a_pattern=m_master->m_slab_cntlr->getPattern();
 	CacheBlockInfo* cache_block_info;
 
-	for(UInt32 i=0;i<16;i++)
+	UInt32 m_associativity=m_master->m_slab_cntlr->getSlabAssoc();
+	UInt32 m_log_blocksize=m_master->m_slab_cntlr->getSlab_m_log_blocksize();
+	UInt32 m_num_sets_per_slab=m_master->m_slab_cntlr->getSlab_m_num_sets_per_slab();
+
+	for(UInt32 i=0;i<m_num_sets_per_slab;i++)
 	{
 		if(a_pattern[core_id][slot_index][dst_slab][i]==true)
 		{
-			for(UInt32 j=0;j<4;j++)
+			for(UInt32 j=0;j<m_associativity;j++)
 			{
 				cache_block_info=slab_slot[core_id][slot_index][src_slab]->peekSingleLine_slab(i,dst_slab);
 				
@@ -1387,7 +1391,7 @@ CacheCntlr:: slab_transfer(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,U
 				{
 			        IntPtr insert_addr =slab_slot[core_id][slot_index][dst_slab]->tagToAddress(cache_block_info->getTag());
 
-					insert_addr= insert_addr | (i<<6) ;
+					insert_addr= insert_addr | (i<<m_log_blocksize) ;
 
 					slab_slot[core_id][slot_index][src_slab]->invalidateSingleLine(insert_addr);
 /*
@@ -1413,11 +1417,17 @@ CacheCntlr:: slab_transfer_off(core_id_t core_id,UInt32 slot_index,UInt32 src_sl
 	Byte data_buf[getCacheBlockSize()];
 	bool ****a_pattern=m_master->m_slab_cntlr->getPattern();
 	CacheBlockInfo* cache_block_info;
-	for(UInt32 i=0;i<16;i++)
+
+	UInt32 m_associativity=m_master->m_slab_cntlr->getSlabAssoc();
+	UInt32 m_log_blocksize=m_master->m_slab_cntlr->getSlab_m_log_blocksize();
+	UInt32 m_num_sets_per_slab=m_master->m_slab_cntlr->getSlab_m_num_sets_per_slab();
+
+
+	for(UInt32 i=0;i<m_num_sets_per_slab;i++)
 	{
 		if(a_pattern[core_id][slot_index][dst_slab][i]==true)
 		{
-			for(UInt32 j=0;j<4;j++)
+			for(UInt32 j=0;j<m_associativity;j++)
 			{
 				//this will invalidate the non-modified block
 				cache_block_info=slab_slot[core_id][slot_index][src_slab]->peekSingleLine_slab_mod(i);
@@ -1431,7 +1441,7 @@ CacheCntlr:: slab_transfer_off(core_id_t core_id,UInt32 slot_index,UInt32 src_sl
 				// Tag is 22 bits + 4 bit set _index + 6 bit offset
 				// so shift set_idex to its position i.e 6 bit from right and or with tag; 
 
-				insert_addr= insert_addr | (i<<6) ;
+				insert_addr= insert_addr | (i<<m_log_blocksize) ;
 
 			   __attribute__((unused))	SharedCacheBlockInfo* variable=insertCacheBlock_slab(insert_addr,CacheState::MODIFIED,data_buf,core_id,ShmemPerfModel::_USER_THREAD,core_id);			   
 				}

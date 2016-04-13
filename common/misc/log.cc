@@ -91,21 +91,23 @@ void Log::initFileDescriptors()
 {
    _coreFiles = new FILE* [_coreCount];
    _simFiles = new FILE* [_coreCount];
-
-   _prakFiles = new FILE* [1];
+	int prak_size=2;
+   _prakFiles = new FILE* [2];
 
    for (core_id_t i = 0; i < _coreCount; i++)
    {
       _coreFiles[i] = NULL;
       _simFiles[i] = NULL;
    }
-
-   _prakFiles[0]=NULL;
+   for(int j=0;j<prak_size;j++)
+   {	
+   	_prakFiles[j]=NULL;
+   }	
 
    _coreLocks = new Lock [_coreCount];
    _simLocks = new Lock [_coreCount];
 
-	_prakLocks = new Lock [1];
+	_prakLocks = new Lock [2];
 
    _systemFile = NULL;
 }
@@ -227,7 +229,7 @@ void Log::getFile(core_id_t core_id, bool sim_thread, FILE **file, Lock **lock)
    {
       if (_systemFile == NULL)
       {
-//printf("syslog called..\n");
+printf("syslog called..\n");
          char filename[256];
          sprintf(filename, "system.log");
          _systemFile = fopen(formatFileName(filename).c_str(), "w");
@@ -270,7 +272,7 @@ void Log::getFile(core_id_t core_id, bool sim_thread, FILE **file, Lock **lock)
    }
 }
 //----------------------
-void Log::getprakFile(core_id_t core_id, bool sim_thread, FILE **file, Lock **lock)
+void Log::getprakFile(core_id_t core_id, bool sim_thread, FILE **file, Lock **lock,int which)
 {
    // we use on-demand file allocation to prevent contention between
    // processes for files
@@ -280,21 +282,37 @@ void Log::getprakFile(core_id_t core_id, bool sim_thread, FILE **file, Lock **lo
 
    
       // core file
-      if (_prakFiles[0] == NULL)
-      {
-		//printf("\n praklog called..\n");
-         char filename[256];
-         sprintf(filename, "praklog.log");
-         _prakFiles[0] = fopen(formatFileName(filename).c_str(), "w");
-         assert(_prakFiles[0] != NULL);
-      }
+	if(which==0)
+	{
+	      if (_prakFiles[0] == NULL)
+	      {
+			//printf("\n praklog called..\n");
+		 char filename[256];
+		 sprintf(filename, "praklog.log");
+		 _prakFiles[0] = fopen(formatFileName(filename).c_str(), "w");
+		 assert(_prakFiles[0] != NULL);
+	      }
+	      // Core file
+	      *file = _prakFiles[0];
+	      *lock = &_prakLocks[0];
+	}
+	else
+	{
 
-      // Core file
-      *file = _prakFiles[0];
-      *lock = &_prakLocks[0];
+	      if (_prakFiles[1] == NULL)
+	      {
+			//printf("\n praklog called..\n");
+		 char filename[256];
+		 sprintf(filename, "veri.log");
+		 _prakFiles[1] = fopen(formatFileName(filename).c_str(), "w");
+		 assert(_prakFiles[1] != NULL);
+	      }
+	      *file = _prakFiles[1];
+	      *lock = &_prakLocks[1];
+	}
 }
 
-void Log::praklog(ErrorState err, const char* source_file, SInt32 source_line, const char *format, ...)
+void Log::praklog(ErrorState err, const char* source_file, SInt32 source_line,int which, const char *format, ...)
 {
    core_id_t core_id;
    bool sim_thread;
@@ -303,7 +321,7 @@ void Log::praklog(ErrorState err, const char* source_file, SInt32 source_line, c
    FILE *file;
    Lock *lock;
 
-   getprakFile(core_id, sim_thread, &file, &lock);
+   getprakFile(core_id, sim_thread, &file, &lock,which);
    int tid = syscall(__NR_gettid);
 
 
@@ -312,9 +330,9 @@ void Log::praklog(ErrorState err, const char* source_file, SInt32 source_line, c
 	
    // This is ugly, but it just prints the time stamp, core number, source file/line
    if (core_id != INVALID_CORE_ID) // valid core id
-      p += sprintf(p, "%-10llu [%5d]  [%2i]%s[%s:%4d]  ", (long long unsigned int) getTimestamp(), tid, core_id, (sim_thread ? "* " : "  "), source_file, source_line);
+      p += sprintf(p, "[%5d]  [%2i]%s[%s:%4d]  ",  tid, core_id, (sim_thread ? "* " : "  "), source_file, source_line);
    else // who knows
-      p += sprintf(p, "%-10llu [%5d]  [  ]  [%s:%4d]  ", (long long unsigned int) getTimestamp(), tid, source_file, source_line);
+      p += sprintf(p, "[%5d]  [  ]  [%s:%4d]  ", tid, source_file, source_line);
 
    switch (err)
    {

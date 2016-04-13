@@ -27,7 +27,7 @@ class Log
       };
 
       void log(ErrorState err, const char *source_file, SInt32 source_line, const char* format, ...);
-      void praklog(ErrorState err, const char *source_file, SInt32 source_line, const char* format, ...);//PRAKLOG
+      void praklog(ErrorState err, const char *source_file, SInt32 source_line,int which, const char* format, ...);//PRAKLOG
 
       bool isEnabled(const char* module);
       bool isLoggingEnabled() const { return _anyLoggingEnabled; }
@@ -46,7 +46,7 @@ class Log
       void discoverCore(core_id_t *core_id, bool *sim_thread);
       void getFile(core_id_t core_id, bool sim_thread, FILE ** f, Lock ** l);
 
-      void getprakFile(core_id_t core_id, bool sim_thread, FILE ** f, Lock ** l);//PRAKLOG
+      void getprakFile(core_id_t core_id, bool sim_thread, FILE ** f, Lock ** l,int which);//PRAKLOG
 
       ErrorState _state;
 
@@ -99,6 +99,12 @@ class Log
 #define _PRAKLOG_PRINT(...) ((void)(0))
 #define PRAK_LOG(...) ((void)(0))
 
+
+#define __PRAKLOG1_PRINT(...) ((void)(0))
+#define _PRAKLOG1_PRINT(...) ((void)(0))
+#define VERI_LOG(...) ((void)(0))
+
+
 #else
 
 #define likely(x)       __builtin_expect((x), 1)
@@ -131,7 +137,10 @@ class Log
 #define __PRAKLOG_PRINT(err, file, line, ...)                               		\
    {                                                                    		\
          String module = Log::getSingleton()->getModule(file);     			\
-            Log::getSingleton()->praklog(err, module.c_str(), line, __VA_ARGS__); 	\
+	 if (1)            		\
+         {                                                              		\
+            Log::getSingleton()->praklog(err, module.c_str(), line,0,__VA_ARGS__); 	\
+         }  										\
    }                                                                    		\
 
 #define _PRAKLOG_PRINT(err, ...)                                            \
@@ -141,6 +150,25 @@ class Log
 
 #define PRAK_LOG(...)                                                  \
    _PRAKLOG_PRINT(Log::None, __VA_ARGS__);                                  \
+//--------------------------------------------------------------------------------
+//__________________________VERI_LOG______________________________________________
+#define __PRAKLOG1_PRINT(err, file, line, ...)                               		\
+   {                                                                    		\
+         String module = Log::getSingleton()->getModule(file);     			\
+	 if (1)            		\
+         {                                                              		\
+            Log::getSingleton()->praklog(err, module.c_str(), line,1, __VA_ARGS__); 	\
+         }  										\
+   }                                                                    		\
+
+#define _PRAKLOG1_PRINT(err, ...)                                            \
+   {                                                                    \
+   __PRAKLOG1_PRINT(err, __FILE__, __LINE__, __VA_ARGS__);                   \
+   }                                                                    \
+
+#define VERI_LOG(...)                                                  \
+   _PRAKLOG1_PRINT(Log::None, __VA_ARGS__);                                  \
+
 //--------------------------------------------------------------------------------
 
 #define LOG_PRINT_WARNING(...)                  \
