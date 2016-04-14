@@ -681,7 +681,7 @@ void
 CacheCntlr::copyDataFromNextLevel(Core::mem_op_t mem_op_type, IntPtr address, bool modeled, SubsecondTime t_now)
 {
    // TODO: what if it's already gone? someone else may invalitate it between the time it arrived an when we get here...
-   LOG_ASSERT_ERROR(m_next_cache_cntlr->operationPermissibleinCache(address, mem_op_type),
+   LOG_ASSERT_ERROR(m_next_cache_cntlr->m_master->m_slab_cntlr->operationPermissibleinCache_slab(m_core_id,address, mem_op_type),
       "Tried to read from next-level cache, but data is already gone");
 
 //MYLOG("copyDataFromNextLevel l%d", m_mem_component);
@@ -1507,16 +1507,17 @@ CacheCntlr::invalidateCacheBlock(IntPtr address)
 void
 CacheCntlr::retrieveCacheBlock(IntPtr address, Byte* data_buf, ShmemPerfModel::Thread_t thread_num, bool update_replacement,core_id_t m_core_id)
 {
-	
+	VERI_LOG("retrive starts in :%s",getName());
 	if(m_mem_component==MemComponent::L2_CACHE)
 	{	
+		
 		VERI_LOG("RETRIVE:%s in l2",getName());
 
 		 UInt32 slab_index,slot_index;
-
+		VERI_LOG("calling getslab in retrive");
 		slab_index=m_master->m_slab_cntlr->getSlab(address,slot_index,m_core_id);
 
-/*   __attribute__((unused)) */
+		VERI_LOG("calling accesssingle line addr:%x slab:%d slot:%d",address,slab_index,slot_index);
 
 	SharedCacheBlockInfo* cache_block_info = (SharedCacheBlockInfo*)  
 	m_master->m_slab_cntlr->getSlabSlotPtr()[m_core_id][slot_index][slab_index]->accessSingleLine(
@@ -1532,6 +1533,7 @@ CacheCntlr::retrieveCacheBlock(IntPtr address, Byte* data_buf, ShmemPerfModel::T
    LOG_ASSERT_ERROR(cache_block_info != NULL, "Expected block to be there but it wasn't");
 
 	}
+	VERI_LOG("retrive ends in :%s",getName());
 }
 
 
@@ -1716,8 +1718,7 @@ VERI_LOG("evict INV %lx", evict_address);
 SharedCacheBlockInfo* 
 CacheCntlr::insertCacheBlock_slab(IntPtr address, CacheState::cstate_t cstate, Byte* data_buf, core_id_t requester, ShmemPerfModel::Thread_t thread_num,core_id_t m_core_id)
 {
-	VERI_LOG("INSERTINSLAB");
-
+   VERI_LOG("*------insert-in-slab-***");
    bool eviction;
    IntPtr evict_address;
    SharedCacheBlockInfo evict_block_info;
@@ -1734,22 +1735,23 @@ CacheCntlr::insertCacheBlock_slab(IntPtr address, CacheState::cstate_t cstate, B
 		return NULL;
 	}
 
-VERI_LOG("insertCacheBlock l%d @ %lx as %c (now %c)", m_mem_component, address, CStateString(cstate), CStateString(m_master->m_slab_cntlr->getCacheState_slab(address,m_core_id)));
+VERI_LOG("M-insertCacheBlock %s @ %lx as %c (now %c)",getName(), address, CStateString(cstate), CStateString(m_master->m_slab_cntlr->getCacheState_slab(address,m_core_id)));
 	
 
    LOG_ASSERT_ERROR(m_master->m_slab_cntlr->getCacheState_slab(address,m_core_id) == CacheState::INVALID, "we already have this line, can't add it again");
 
+	VERI_LOG("M-calling insertsingle line addr:%x slab:%d slot:%d",address,slab_index,slot_index);
 
    m_master->m_slab_cntlr->getSlabSlotPtr()[m_core_id][slot_index][slab_index]->insertSingleLine(address, data_buf,
          &eviction, &evict_address, &evict_block_info, evict_buf,
          getShmemPerfModel()->getElapsedTime(thread_num), this);
 
-VERI_LOG("some error1");
+VERI_LOG("M-some error1");
 
    SharedCacheBlockInfo* cache_block_info = m_master->m_slab_cntlr->setCacheState_slab(address, cstate,m_core_id);
 
 
-	VERI_LOG("some error2");
+	VERI_LOG("M-some error2");
 
    if (Sim()->getInstrumentationMode() == InstMode::CACHE_ONLY)
       cache_block_info->setOption(CacheBlockInfo::WARMUP);
@@ -1763,12 +1765,12 @@ VERI_LOG("some error1");
 	//   m_next_cache_cntlr->notifyPrevLevelInsert(m_core_id_master, m_mem_component, address);
     }	
 
-   VERI_LOG("insertCacheBlock l%d local done", m_mem_component);
+   VERI_LOG("M-insertCacheBlock %s local done", getName());
 
 
    if (eviction)
    {
-	VERI_LOG("evicting @%lx", evict_address);
+	VERI_LOG("M-evicting @%lx", evict_address);
 
       if (
          !m_next_cache_cntlr // Track at LLC
@@ -1780,7 +1782,7 @@ VERI_LOG("some error1");
       }
 
       CacheState::cstate_t old_state = evict_block_info.getCState();
-      VERI_LOG("evicting @%lx (state %c)", evict_address, CStateString(old_state));
+      VERI_LOG("M-evicting @%lx (state %c)", evict_address, CStateString(old_state));
       {
          ScopedLock sl(getLock());
          transition(
@@ -1805,7 +1807,7 @@ VERI_LOG("some error1");
       if (! m_master->m_prev_cache_cntlrs.empty()) 
 	{
 
-	VERI_LOG("UPDATECACHE BLOCK");
+	VERI_LOG("M-UPDATECACHE BLOCK");
 
          ScopedLock sl(getLock());
          /* propagate the update to the previous levels. they will write modified data back to our evict buffer when needed */
@@ -1839,7 +1841,7 @@ VERI_LOG("some error1");
       }
       else if (m_next_cache_cntlr)
       {
-	VERI_LOG("m_next_cache_cntlr");
+	VERI_LOG("M-m_next_cache_cntlr");
          if (m_cache_writethrough) 
 	{
             /* If we're a write-through cache the new data is in the next level already */
@@ -1879,7 +1881,7 @@ VERI_LOG("some error1");
             }
          }
 
-	VERI_LOG("fordramends");
+	VERI_LOG("M-fordramends");
       }
       else
       {
@@ -1890,7 +1892,7 @@ VERI_LOG("some error1");
      // MYLOG("insertCacheBlock l%d evict done", m_mem_component);
    }
 
-   VERI_LOG("insertCacheBlock CACHE:%s end",getName());
+   VERI_LOG("M-insertCacheBlock CACHE:%s end",getName());
    return cache_block_info;
 
 

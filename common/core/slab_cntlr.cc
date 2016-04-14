@@ -94,20 +94,20 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 		{
 			if(access[core_id][i][j] > 128 && isSlabOn[core_id][i][j]==false)
 			{
-				isSlabOn[core_id][i][j]=true;
+				//isSlabOn[core_id][i][j]=true;
 
 				PRAK_LOG("TURN ON core:%d slot:%d slab :%d",core_id,i,j);
 				PRAK_LOG("DO BLOCK TRANSFER");
 
-				m_block_transfer += cntlr->slab_transfer(core_id,i,0,j);
+				//m_block_transfer += cntlr->slab_transfer(core_id,i,0,j);
 			}
 			else if(access[core_id][i][j] < 30  && isSlabOn[core_id][i][j]==true)
 			{
-				isSlabOn[core_id][i][j]=false;
+				//isSlabOn[core_id][i][j]=false;
 
 				PRAK_LOG("TURN OFF core:%d slot:%d slab :%d",core_id,i,j);
 				PRAK_LOG("DO BLOCK TRANSFER OFF");
-				m_block_transfer += cntlr->slab_transfer_off(core_id,i,j,0);
+				//m_block_transfer += cntlr->slab_transfer_off(core_id,i,j,0);
 			}
 		}	
 	}
@@ -142,9 +142,15 @@ SlabCntlr::getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id) con
 	g_set_index=g_set_index % m_num_slabs_per_slot; //take least significant two bits;
 
 	if(isSlabOn[m_core_id][slot_index][g_set_index])
+	{
+		VERI_LOG("Getslab-s-addr:%x slab:%d slot:%d",addr,g_set_index,slot_index);
 		return g_set_index;
+	}
 	else
+	{
+		VERI_LOG("Getslab-f-addr:%x slab:%d slot:%d",addr,0,slot_index);
 		return 0;
+	}
 	
 }
 
@@ -202,18 +208,8 @@ SlabCntlr::getCacheBlockInfo_slab(IntPtr address,core_id_t m_core_id,bool record
 {
 	UInt32 slab_index,slot_index,set_index;
 
-	UInt32 g_set_index=address>>m_log_blocksize;//eliminate 6 bit block offset;
-
-	slot_index=g_set_index>>(m_log_num_slabs_per_slot + m_log_num_sets_per_slab);//eliminate 2 bit slab + 4 bit local set_index
-
-	slot_index=slot_index % m_num_slabs_per_slot ; // take least significant 6 bits
-
-	set_index= g_set_index % m_num_sets_per_slab;
-
-	g_set_index=g_set_index>>m_log_num_sets_per_slab;//eliminate 4 bit local index ,now slab index + slot + tag remaining
-	g_set_index=g_set_index % m_num_slabs_per_slot; //take least significant two bits;
-
-
+	slab_index=getSlab(address,slot_index,m_core_id);
+/*
 	if(record_stat)
 	{
 		b_lock.acquire();
@@ -231,7 +227,7 @@ SlabCntlr::getCacheBlockInfo_slab(IntPtr address,core_id_t m_core_id,bool record
 	{
 		slab_index=0;
 	}
-
+*/
 	
    return (SharedCacheBlockInfo*) slab_slot[m_core_id][slot_index][slab_index]->peekSingleLine(address);
 }

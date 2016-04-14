@@ -129,7 +129,7 @@ Cache::accessSingleLine(IntPtr addr, access_t access_type,
       if (m_fault_injector)
          m_fault_injector->postWrite(addr, set_index * m_associativity + line_index, bytes, (Byte*)m_sets[set_index]->getDataPtr(line_index, block_offset), now);
    }
-
+	VERI_LOG("Access single line addr:%x set:%d",addr,set_index);
    return cache_block_info;
 }
 
@@ -145,7 +145,7 @@ Cache::insertSingleLine(IntPtr addr, Byte* fill_buff,
 
    CacheBlockInfo* cache_block_info = CacheBlockInfo::create(m_cache_type);
    cache_block_info->setTag(tag);
-
+	VERI_LOG("set tag:%x",tag);
    m_sets[set_index]->insert(cache_block_info, fill_buff,
          eviction, evict_block_info, evict_buff, cntlr);
    *evict_addr = tagToAddress(evict_block_info->getTag());
@@ -162,7 +162,7 @@ Cache::insertSingleLine(IntPtr addr, Byte* fill_buff,
    #ifdef ENABLE_SET_USAGE_HIST
    ++m_set_usage_hist[set_index];
    #endif
-
+	VERI_LOG("insetsingle line addr:%x set:%d",addr,set_index);
    delete cache_block_info;
 }
 

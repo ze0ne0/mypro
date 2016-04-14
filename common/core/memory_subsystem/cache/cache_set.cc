@@ -143,7 +143,7 @@ CacheSet::insert(CacheBlockInfo* cache_block_info, Byte* fill_buff, bool* evicti
    assert(index < m_associativity);
 
    assert(eviction != NULL);
-
+	VERI_LOG("inserting in block");
    if (m_cache_block_info_array[index]->isValid())
    {
       *eviction = true;
@@ -167,9 +167,10 @@ CacheSet::insert(CacheBlockInfo* cache_block_info, Byte* fill_buff, bool* evicti
    m_cache_block_info_array[index]->clone(cache_block_info);
 
    if (fill_buff != NULL && m_blocks != NULL)
-   {    memcpy(&m_blocks[index * m_blocksize], (void*) fill_buff, m_blocksize);
-	}
-  	else
+   {    
+	memcpy(&m_blocks[index * m_blocksize], (void*) fill_buff, m_blocksize);
+    }
+    else
 	{
 		//PRAK_LOG("WRITE FAILED 2 fill_buff:%s m_blocks:%s",fill_buff==NULL?"NULL":"Non-NULL",m_blocks==NULL?"NULL":"Non-NULL");
 	}
