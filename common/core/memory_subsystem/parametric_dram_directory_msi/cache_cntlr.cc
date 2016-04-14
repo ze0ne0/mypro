@@ -1544,7 +1544,7 @@ CacheCntlr::retrieveCacheBlock(IntPtr address, Byte* data_buf, ShmemPerfModel::T
 SharedCacheBlockInfo*
 CacheCntlr::insertCacheBlock(IntPtr address, CacheState::cstate_t cstate, Byte* data_buf, core_id_t requester, ShmemPerfModel::Thread_t thread_num)
 {
-VERI_LOG("insertCacheBlock l%d @ %lx as %c (now %c)", m_mem_component, address, CStateString(cstate), CStateString(getCacheState(address)));
+VERI_LOG("N-insertCacheBlock %s @ %lx as %c (now %c)",getName(), address, CStateString(cstate), CStateString(getCacheState(address)));
    bool eviction;
    IntPtr evict_address;
    SharedCacheBlockInfo evict_block_info;
@@ -1565,12 +1565,12 @@ VERI_LOG("insertCacheBlock l%d @ %lx as %c (now %c)", m_mem_component, address, 
 
    if (m_next_cache_cntlr && !m_perfect)
       m_next_cache_cntlr->notifyPrevLevelInsert(m_core_id_master, m_mem_component, address);
-VERI_LOG("insertCacheBlock l%d local done", m_mem_component);
+VERI_LOG("N-insertCacheBlock :%s local done", getName());
 
 
    if (eviction)
    {
-VERI_LOG("INS-evicting @%lx", evict_address);
+	VERI_LOG("N-insert-evicting @%lx", evict_address);
 
       if (
          !m_next_cache_cntlr // Track at LLC
@@ -1582,7 +1582,7 @@ VERI_LOG("INS-evicting @%lx", evict_address);
       }
 
       CacheState::cstate_t old_state = evict_block_info.getCState();
-      VERI_LOG("evicting @%lx (state %c)", evict_address, CStateString(old_state));
+      VERI_LOG("N-evicting @%lx (state %c)", evict_address, CStateString(old_state));
       {
          ScopedLock sl(getLock());
          transition(
@@ -1603,8 +1603,11 @@ VERI_LOG("INS-evicting @%lx", evict_address);
       /* TODO: this part looks a lot like updateCacheBlock's dirty case, but with the eviction buffer
          instead of an address, and with a message to the directory at the end. Merge? */
 
+	VERI_LOG("N-evicting");
+
       LOG_PRINT("Eviction: addr(0x%x)", evict_address);
-      if (! m_master->m_prev_cache_cntlrs.empty()) {
+      if (! m_master->m_prev_cache_cntlrs.empty()) 
+	{
          ScopedLock sl(getLock());
          /* propagate the update to the previous levels. they will write modified data back to our evict buffer when needed */
          m_master->m_evicting_address = evict_address;
@@ -1613,7 +1616,7 @@ VERI_LOG("INS-evicting @%lx", evict_address);
          SubsecondTime latency = SubsecondTime::Zero();
          for(CacheCntlrList::iterator it = m_master->m_prev_cache_cntlrs.begin(); it != m_master->m_prev_cache_cntlrs.end(); it++)
 	 {
-		PRAK_LOG("UPDT:%s",(*it)->getName());
+		VERI_LOG("N-UPDT:%s",(*it)->getName());
             latency = getMax<SubsecondTime>(latency, (*it)->updateCacheBlock(evict_address, CacheState::INVALID, Transition::BACK_INVAL, NULL, thread_num).first);
 	 }
          getMemoryManager()->incrElapsedTime(latency, thread_num);
@@ -1643,12 +1646,17 @@ VERI_LOG("INS-evicting @%lx", evict_address);
          } else {
             /* Send dirty block to next level cache. Probably we have an evict/victim buffer to do that when we're idle, so ignore timing */
             if (evict_block_info.getCState() == CacheState::MODIFIED)
+	    {	VERI_LOG("N-calling writecacheblock");	
                m_next_cache_cntlr->writeCacheBlock(evict_address, 0, evict_buf, getCacheBlockSize(), thread_num);
-         }
+		VERI_LOG("N-calling writecacheblock ends");	
+	    }
+         }VERI_LOG("N-calling notify prevlelvel starts");
          m_next_cache_cntlr->notifyPrevLevelEvict(m_core_id_master, m_mem_component, evict_address);
+	VERI_LOG("N-calling notify prevlelvel ends");
       }
       else if (m_master->m_dram_cntlr)
       {
+	VERI_LOG("N-DRAM EVICT");
          if (evict_block_info.getCState() == CacheState::MODIFIED)
          {
             SubsecondTime t_now = getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD);
