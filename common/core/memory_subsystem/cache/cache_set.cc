@@ -143,7 +143,9 @@ CacheSet::insert(CacheBlockInfo* cache_block_info, Byte* fill_buff, bool* evicti
    assert(index < m_associativity);
 
    assert(eviction != NULL);
-	VERI_LOG("inserting in block");
+
+	VERI_LOG("inserting in block assoc:%d",index);
+
    if (m_cache_block_info_array[index]->isValid())
    {
       *eviction = true;

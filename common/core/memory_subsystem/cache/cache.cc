@@ -105,9 +105,12 @@ Cache::accessSingleLine(IntPtr addr, access_t access_type,
 
    splitAddress(addr, tag, set_index, block_offset);
 
-   CacheSet* set = m_sets[set_index];
-   CacheBlockInfo* cache_block_info = set->find(tag, &line_index);
+   VERI_LOG("Access single line starts addr:%x tag:%x set:%d",addr,tag,set_index);
 
+   CacheSet* set = m_sets[set_index];
+
+   CacheBlockInfo* cache_block_info = set->find(tag, &line_index);
+	
    if (cache_block_info == NULL)
    {
 	//PRAK_LOG("can't access single line");
@@ -129,7 +132,7 @@ Cache::accessSingleLine(IntPtr addr, access_t access_type,
       if (m_fault_injector)
          m_fault_injector->postWrite(addr, set_index * m_associativity + line_index, bytes, (Byte*)m_sets[set_index]->getDataPtr(line_index, block_offset), now);
    }
-	VERI_LOG("Access single line addr:%x set:%d",addr,set_index);
+	VERI_LOG("Access single line ends addr:%x set:%d",addr,set_index);
    return cache_block_info;
 }
 
