@@ -94,7 +94,7 @@ IntPtr
 CacheBase::tagToAddress(const IntPtr tag)
 {
 	IntPtr addr=tag << m_log_blocksize;
-	VERI_LOG("t-2-addr tag:%x addr:%x ",tag,addr);
+	//VERI_LOG("t-2-addr tag:%x addr:%x ",tag,addr);
 	return addr; 
 
 }

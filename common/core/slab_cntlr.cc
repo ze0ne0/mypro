@@ -63,7 +63,7 @@ SlabCntlr::SlabCntlr(
 			for(UInt32 j=0;j<m_num_slabs_per_slot;j++)
 			{
 
-				PRAK_LOG("CREATING %s cfg:%s ",name.c_str(),cfg_name.c_str());
+				//PRAK_LOG("CREATING %s cfg:%s ",name.c_str(),cfg_name.c_str());
 
 				slab_slot[k][i][j]=new Cache(name,cfg_name,0,m_num_sets_per_slab,m_slab_assoc,64,r_policy,
 					    CacheBase::SHARED_CACHE,
@@ -112,7 +112,7 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 		}	
 	}
 
-	PRAK_LOG("BLK_TRNSFER:%d",m_block_transfer);
+	PRAK_LOG("BLK_TRNSFER count:%d",m_block_transfer);
 	m_block_transfer=0;
 }
 
@@ -143,12 +143,12 @@ SlabCntlr::getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id) con
 
 	if(isSlabOn[0][slot_index][g_set_index])
 	{
-		VERI_LOG("Getslab-s-addr:%x slab:%d slot:%d",addr,g_set_index,slot_index);
+		//VERI_LOG("Getslab-s-addr:%x slab:%d slot:%d",addr,g_set_index,slot_index);
 		return g_set_index;
 	}
 	else
 	{
-		VERI_LOG("Getslab-f-addr:%x slab:%d slot:%d",addr,0,slot_index);
+	//	VERI_LOG("Getslab-f-addr:%x slab:%d slot:%d",addr,0,slot_index);
 		return 0;
 	}
 	
@@ -206,7 +206,7 @@ SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
 SharedCacheBlockInfo*
 SlabCntlr::getCacheBlockInfo_slab(IntPtr address,core_id_t m_core_id,bool record_stat)
 {
-	UInt32 slab_index,slot_index,set_index;
+	UInt32 slab_index,slot_index;//,set_index;
 
 	slab_index=getSlab(address,slot_index,0);
 /*
