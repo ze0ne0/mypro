@@ -17,10 +17,10 @@ SlabCntlr::SlabCntlr(
 	m_num_slots=64;
 	m_num_slabs_per_slot=4;
 	m_num_sets_per_slab=16;
-	m_slab_assoc=4;
+	m_slab_assoc=8;
 	String r_policy="lru";
 	String hash_function="mod";
-	m_num_cores=2;
+	m_num_cores=1;
 	L2_access=0;L2_hits=0;
 
 //---------------------------------------------------------------------------------
@@ -90,24 +90,24 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 	PRAK_LOG("In reconfiguration");	
 	for(UInt32 i=0;i< m_num_slots;i++)
 	{
-		for(UInt32 j=0;j< m_num_slabs_per_slot;j++)
+		for(UInt32 j=1;j< m_num_slabs_per_slot;j++)
 		{
-			if(access[core_id][i][j] > 128 && isSlabOn[core_id][i][j]==false)
+			if(access[0][i][j] > 128 && isSlabOn[0][i][j]==false)
 			{
-				//isSlabOn[core_id][i][j]=true;
+				//isSlabOn[0][i][j]=true;
 
-				PRAK_LOG("TURN ON core:%d slot:%d slab :%d",core_id,i,j);
+				PRAK_LOG("TURN ON core:%d slot:%d slab :%d",0,i,j);
 				PRAK_LOG("DO BLOCK TRANSFER");
 
-				//m_block_transfer += cntlr->slab_transfer(core_id,i,0,j);
+				//m_block_transfer += cntlr->slab_transfer(0,i,0,j);
 			}
-			else if(access[core_id][i][j] < 30  && isSlabOn[core_id][i][j]==true)
+			else if(access[0][i][j] < 30  && isSlabOn[0][i][j]==true)
 			{
-				//isSlabOn[core_id][i][j]=false;
+				//isSlabOn[0][i][j]=false;
 
-				PRAK_LOG("TURN OFF core:%d slot:%d slab :%d",core_id,i,j);
+				PRAK_LOG("TURN OFF core:%d slot:%d slab :%d",0,i,j);
 				PRAK_LOG("DO BLOCK TRANSFER OFF");
-				//m_block_transfer += cntlr->slab_transfer_off(core_id,i,j,0);
+				//m_block_transfer += cntlr->slab_transfer_off(0,i,j,0);
 			}
 		}	
 	}
@@ -141,7 +141,7 @@ SlabCntlr::getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id) con
 	g_set_index=g_set_index>> m_log_num_sets_per_slab;//eliminate 4 bit local index ,now slab index + slot + tag remaining
 	g_set_index=g_set_index % m_num_slabs_per_slot; //take least significant two bits;
 
-	if(isSlabOn[m_core_id][slot_index][g_set_index])
+	if(isSlabOn[0][slot_index][g_set_index])
 	{
 		VERI_LOG("Getslab-s-addr:%x slab:%d slot:%d",addr,g_set_index,slot_index);
 		return g_set_index;
@@ -158,7 +158,7 @@ bool
 SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
                IntPtr address, Core::mem_op_t mem_op_type, CacheBlockInfo **cache_block_info)
 {
- 	CacheBlockInfo *block_info = getCacheBlockInfo_slab(address,m_core_id,true);
+ 	CacheBlockInfo *block_info = getCacheBlockInfo_slab(address,0,true);
    // returns NULL if block doesn't exist in cache
 
    if (cache_block_info != NULL)
@@ -208,18 +208,18 @@ SlabCntlr::getCacheBlockInfo_slab(IntPtr address,core_id_t m_core_id,bool record
 {
 	UInt32 slab_index,slot_index,set_index;
 
-	slab_index=getSlab(address,slot_index,m_core_id);
+	slab_index=getSlab(address,slot_index,0);
 /*
 	if(record_stat)
 	{
 		b_lock.acquire();
-			slot_access[m_core_id][slot_index]+=1;
-			access[m_core_id][slot_index][g_set_index]+=1;
-			a_pattern[m_core_id][slot_index][g_set_index][set_index]=true;
+			slot_access[0][slot_index]+=1;
+			access[0][slot_index][g_set_index]+=1;
+			a_pattern[0][slot_index][g_set_index][set_index]=true;
 		b_lock.release();
 	}
 
-	if(isSlabOn[m_core_id][slot_index][g_set_index])
+	if(isSlabOn[0][slot_index][g_set_index])
 	{
 		slab_index=g_set_index;
 	}
@@ -229,7 +229,7 @@ SlabCntlr::getCacheBlockInfo_slab(IntPtr address,core_id_t m_core_id,bool record
 	}
 */
 	
-   return (SharedCacheBlockInfo*) slab_slot[m_core_id][slot_index][slab_index]->peekSingleLine(address);
+   return (SharedCacheBlockInfo*) slab_slot[0][slot_index][slab_index]->peekSingleLine(address);
 }
 
 
@@ -237,7 +237,7 @@ SlabCntlr::getCacheBlockInfo_slab(IntPtr address,core_id_t m_core_id,bool record
 CacheState::cstate_t
 SlabCntlr::getCacheState_slab(IntPtr address,core_id_t m_core_id)
 {
-   SharedCacheBlockInfo* cache_block_info = getCacheBlockInfo_slab(address,m_core_id);
+   SharedCacheBlockInfo* cache_block_info = getCacheBlockInfo_slab(address,0);
    return getCacheState_slab(cache_block_info);
 }
 
@@ -250,10 +250,8 @@ SlabCntlr::getCacheState_slab(CacheBlockInfo *cache_block_info)
 SharedCacheBlockInfo*
 SlabCntlr::setCacheState_slab(IntPtr address,CacheState::cstate_t cstate,core_id_t m_core_id)
 {
-   SharedCacheBlockInfo* cache_block_info = getCacheBlockInfo_slab(address,m_core_id);
-	if(cache_block_info)
-	   cache_block_info->setCState(cstate);
-	
+   SharedCacheBlockInfo* cache_block_info = getCacheBlockInfo_slab(address,0);
+   cache_block_info->setCState(cstate);	
    return cache_block_info;
 }
 //------------------------------------------------------------------------------------

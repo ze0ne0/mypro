@@ -61,6 +61,7 @@ CacheBlockInfo::invalidate()
    m_cstate = CacheState::INVALID;
 }
 
+
 void
 CacheBlockInfo::clone(CacheBlockInfo* cache_block_info)
 {

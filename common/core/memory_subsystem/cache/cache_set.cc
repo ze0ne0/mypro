@@ -73,10 +73,19 @@ CacheSet::find(IntPtr tag, UInt32* line_index)
 {
    for (SInt32 index = m_associativity-1; index >= 0; index--)
    {
+	if(m_cache_block_info_array[index]->isValid())
+	{
+		VERI_LOG("find: tag:%x getTag=%x  assoc:%d",tag,m_cache_block_info_array[index]->getTag(),index);
+	}
+	else
+	{
+		VERI_LOG("find:null tag:  assoc:%d",index);
+	}
       if (m_cache_block_info_array[index]->getTag() == tag)
-      {
+      {	VERI_LOG("hit in find:assoc %d",index);
          if (line_index != NULL)
             *line_index = index;
+
          return (m_cache_block_info_array[index]);
       }
    }
@@ -144,17 +153,20 @@ CacheSet::insert(CacheBlockInfo* cache_block_info, Byte* fill_buff, bool* evicti
 
    assert(eviction != NULL);
 
-	VERI_LOG("inserting in block assoc:%d",index);
+	VERI_LOG("inserting in block assoc:%d inert-tag:%x",index,cache_block_info->getTag());
 
    if (m_cache_block_info_array[index]->isValid())
    {
       *eviction = true;
       // FIXME: This is a hack. I dont know if this is the best way to do
       evict_block_info->clone(m_cache_block_info_array[index]);
+	
+	VERI_LOG("insert-evict assoc:%d tag:%x",index,evict_block_info->getTag());
+
       if (evict_buff != NULL && m_blocks != NULL)
       {
 	   memcpy((void*) evict_buff, &m_blocks[index * m_blocksize], m_blocksize);
-	}
+      }
 	else
 	{
 		//PRAK_LOG("WRITE FAILED 1 evict_buff:%s m_blocks:%s",evict_buff==NULL?"NULL":"Non-NULL",m_blocks==NULL?"NULL":"Non-NULL");
@@ -166,7 +178,10 @@ CacheSet::insert(CacheBlockInfo* cache_block_info, Byte* fill_buff, bool* evicti
    }
 
    // FIXME: This is a hack. I dont know if this is the best way to do
+	
    m_cache_block_info_array[index]->clone(cache_block_info);
+
+   VERI_LOG("inserting in block assoc:%d  tag:%x state:%d",index,m_cache_block_info_array[index]->getTag(),m_cache_block_info_array[index]->getCState());	
 
    if (fill_buff != NULL && m_blocks != NULL)
    {    

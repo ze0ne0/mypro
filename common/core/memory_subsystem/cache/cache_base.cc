@@ -93,5 +93,8 @@ CacheBase::splitAddress(const IntPtr addr, IntPtr& tag, UInt32& set_index,
 IntPtr
 CacheBase::tagToAddress(const IntPtr tag)
 {
-   return tag << m_log_blocksize;
+	IntPtr addr=tag << m_log_blocksize;
+	VERI_LOG("t-2-addr tag:%x addr:%x ",tag,addr);
+	return addr; 
+
 }

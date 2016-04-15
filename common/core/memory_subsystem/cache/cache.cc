@@ -110,12 +110,15 @@ Cache::accessSingleLine(IntPtr addr, access_t access_type,
    CacheSet* set = m_sets[set_index];
 
    CacheBlockInfo* cache_block_info = set->find(tag, &line_index);
-	
+	VERI_LOG("after find");
    if (cache_block_info == NULL)
    {
-	//PRAK_LOG("can't access single line");
-      return NULL;
-   }	
+	VERI_LOG("return:>set tag find=null addr:%x tag:%x set:%d",addr,tag,set_index);
+        return NULL;
+   }
+   else
+	VERI_LOG("return:>set tag find=null addr:%x tag:%x set:%d",addr,tag,set_index);
+		
    if (access_type == LOAD)
    {
       // NOTE: assumes error occurs in memory. If we want to model bus errors, insert the error into buff instead
