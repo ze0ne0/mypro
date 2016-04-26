@@ -11,7 +11,7 @@ Dyn_reconf::Dyn_reconf(CacheCntlr* cc)
 	p_last_base_count=0;
 	p_base_addr=0;
 	p_last_base_addr=0;
-	state=STABLE;
+	state=FIRST_CHANGE;
 	thresh_diff=3072;
 	thresh_count=256;
 }
@@ -69,7 +69,7 @@ void Dyn_reconf:: processAddress(IntPtr address,core_id_t core_id)
 				if(p_base_count > thresh_count)
 				{
 
-					PRAK_LOG("*--------------Change 1 of phase new b:%x------------------*\n",p_base_addr);
+					PRAK_LOG("*--------------Change 1 of phase new b:%x------------------*",p_base_addr);
 					state=STABLE;
 					phase_change=true;
 				}
@@ -103,7 +103,7 @@ void Dyn_reconf:: processAddress(IntPtr address,core_id_t core_id)
 				p_base_count+=1;
 				if(p_base_count > thresh_count)
 				{
-					PRAK_LOG("*--------------Change 2 of phase new b:%x------------------*\n",p_base_addr);
+					PRAK_LOG("*--------------Change 2 of phase new b:%x------------------*",p_base_addr);
 					state=STABLE;
 					phase_change=true;
 				}
@@ -126,7 +126,9 @@ void Dyn_reconf:: processAddress(IntPtr address,core_id_t core_id)
 void Dyn_reconf:: incrementCount(IntPtr address,core_id_t core_id)
 {
 	p_instruction_count+=1;
+//	VERI_LOG("RE1");
 	processAddress(address,core_id);
+//	VERI_LOG("RE2");
 }
 
 

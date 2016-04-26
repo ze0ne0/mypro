@@ -31,7 +31,7 @@ class Log
 
       bool isEnabled(const char* module);
       bool isLoggingEnabled() const { return _anyLoggingEnabled; }
-
+      bool isLoggingEnabled2() const { return _anyLoggingEnabled2; }
       String getModule(const char *filename);
 
    private:
@@ -42,6 +42,7 @@ class Log
       void getDisabledModules();
       void getEnabledModules();
       bool initIsLoggingEnabled();
+	bool initIsLoggingEnabled2();
 
       void discoverCore(core_id_t *core_id, bool *sim_thread);
       void getFile(core_id_t core_id, bool sim_thread, FILE ** f, Lock ** l);
@@ -70,6 +71,7 @@ class Log
       std::set<String> _enabledModules;
       bool _loggingEnabled;
       bool _anyLoggingEnabled;
+      bool _anyLoggingEnabled2;
 
       /* std::map<const char*, String> _modules; */
       /* Lock _modules_lock; */
@@ -155,7 +157,7 @@ class Log
 #define __PRAKLOG1_PRINT(err, file, line, ...)                               		\
    {                                                                    		\
          String module = Log::getSingleton()->getModule(file);     			\
-	 if (1)            		\
+	 if (Log::getSingleton()->isLoggingEnabled2())            		\
          {                                                              		\
             Log::getSingleton()->praklog(err, module.c_str(), line,1, __VA_ARGS__); 	\
          }  										\

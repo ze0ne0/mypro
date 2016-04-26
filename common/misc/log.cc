@@ -34,6 +34,7 @@ Log::Log(Config &config)
    getDisabledModules();
 
    _loggingEnabled = initIsLoggingEnabled();
+   _anyLoggingEnabled2 = initIsLoggingEnabled2();
    _anyLoggingEnabled = (!_enabledModules.empty()) || _loggingEnabled;
 
    assert(_singleton == NULL);
@@ -57,6 +58,12 @@ Log::~Log()
 
 	if (_prakFiles[0])
 	         fclose(_prakFiles[0]);
+
+	if (_prakFiles[1])
+	         fclose(_prakFiles[1]);
+
+	if (_prakFiles[2])
+	         fclose(_prakFiles[2]);
 
    delete [] _coreLocks;
    delete [] _simLocks;
@@ -91,8 +98,9 @@ void Log::initFileDescriptors()
 {
    _coreFiles = new FILE* [_coreCount];
    _simFiles = new FILE* [_coreCount];
-	int prak_size=2;
-   _prakFiles = new FILE* [2];
+
+    int prak_size=3;
+   _prakFiles = new FILE* [3];
 
    for (core_id_t i = 0; i < _coreCount; i++)
    {
@@ -107,7 +115,7 @@ void Log::initFileDescriptors()
    _coreLocks = new Lock [_coreCount];
    _simLocks = new Lock [_coreCount];
 
-	_prakLocks = new Lock [2];
+    _prakLocks = new Lock [3];
 
    _systemFile = NULL;
 }
@@ -190,6 +198,22 @@ bool Log::initIsLoggingEnabled()
    }
 }
 
+bool Log::initIsLoggingEnabled2()
+{	bool f;
+   try
+   {
+	f=Sim()->getCfg()->getBool("prak_model/prak/veri_log");
+	printf("log:%d\n",f);
+      return f;
+
+   }
+   catch (...)
+   {
+      assert(false);
+      return false;
+   }
+}
+
 UInt64 Log::getTimestamp()
 {
    timeval t;
@@ -229,7 +253,7 @@ void Log::getFile(core_id_t core_id, bool sim_thread, FILE **file, Lock **lock)
    {
       if (_systemFile == NULL)
       {
-printf("syslog called..\n");
+//printf("syslog called..\n");
          char filename[256];
          sprintf(filename, "system.log");
          _systemFile = fopen(formatFileName(filename).c_str(), "w");
@@ -282,33 +306,33 @@ void Log::getprakFile(core_id_t core_id, bool sim_thread, FILE **file, Lock **lo
 
    
       // core file
-	if(which==0)
+	if(which==1)
 	{
-	      if (_prakFiles[0] == NULL)
+	      if (_prakFiles[0/*core_id*/] == NULL)
 	      {
 			//printf("\n praklog called..\n");
 		 char filename[256];
-		 sprintf(filename, "praklog.log");
-		 _prakFiles[0] = fopen(formatFileName(filename).c_str(), "w");
-		 assert(_prakFiles[0] != NULL);
+		 sprintf(filename, "veri.log"/*core_id*/);
+		 _prakFiles[0/*core_id*/] = fopen(formatFileName(filename).c_str(), "w");
+		 assert(_prakFiles[0/*core_id*/] != NULL);
 	      }
 	      // Core file
-	      *file = _prakFiles[0];
-	      *lock = &_prakLocks[0];
+	      *file = _prakFiles[0/*core_id*/];
+	      *lock = &_prakLocks[0/*core_id*/];
 	}
-	else
+	else 
 	{
 
-	      if (_prakFiles[1] == NULL)
+	      if (_prakFiles[2] == NULL)
 	      {
 			//printf("\n praklog called..\n");
 		 char filename[256];
-		 sprintf(filename, "veri.log");
-		 _prakFiles[1] = fopen(formatFileName(filename).c_str(), "w");
-		 assert(_prakFiles[1] != NULL);
+		 sprintf(filename, "prak.log");
+		 _prakFiles[2] = fopen(formatFileName(filename).c_str(), "w");
+		 assert(_prakFiles[2] != NULL);
 	      }
-	      *file = _prakFiles[1];
-	      *lock = &_prakLocks[1];
+	      *file = _prakFiles[2];
+	      *lock = &_prakLocks[2];
 	}
 }
 

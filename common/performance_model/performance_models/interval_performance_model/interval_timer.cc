@@ -205,7 +205,7 @@ boost::tuple<uint64_t,uint64_t> IntervalTimer::simulate(const std::vector<Dynami
 
       if (m_uops_total > 10000 && m_uops_x87 > m_uops_total / 20)
       {
-         LOG_PRINT_WARNING_ONCE("Significant fraction of x87 instructions encountered, accuracy will be low. Compile without -mno-sse2 -mno-sse3 to avoid these instructions.");
+        // LOG_PRINT_WARNING_ONCE("Significant fraction of x87 instructions encountered, accuracy will be low. Compile without -mno-sse2 -mno-sse3 to avoid these instructions.");
       }
 
       // Only dispatch instructions from the window when it is full

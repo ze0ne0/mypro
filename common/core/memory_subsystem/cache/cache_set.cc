@@ -73,19 +73,16 @@ CacheSet::find(IntPtr tag, UInt32* line_index)
 {
    for (SInt32 index = m_associativity-1; index >= 0; index--)
    {
-/*	
 	if(m_cache_block_info_array[index]->isValid())
 	{
-		VERI_LOG("find: tag:%x getTag=%x  assoc:%d",tag,m_cache_block_info_array[index]->getTag(),index);
+		//VERI_LOG("find: tag:%x getTag=%x  assoc:%d",tag,m_cache_block_info_array[index]->getTag(),index);
 	}
 	else
 	{
-		VERI_LOG("find:null tag:  assoc:%d",index);
+		//VERI_LOG("find:null tag:  assoc:%d",index);
 	}
-*/
       if (m_cache_block_info_array[index]->getTag() == tag)
-      {	
-	//VERI_LOG("hit in find:assoc %d",index);
+      {	//VERI_LOG("hit in find:assoc %d",index);
          if (line_index != NULL)
             *line_index = index;
 
@@ -98,16 +95,23 @@ CacheSet::find(IntPtr tag, UInt32* line_index)
 CacheBlockInfo*
 CacheSet::find_slab(UInt32 set_index,UInt32 dst_slab)
 {
+	IntPtr addr;
+//	CacheBlockInfo* cache_block=;
    for (SInt32 index = m_associativity-1; index >= 0; index--)
    {
       if (m_cache_block_info_array[index]->isValid())
       {
-	 if(m_cache_block_info_array[index]->getTag() % 4 == dst_slab)
-	 {
-			//m_cache_block_info_array[index]->invalidate();
+	 addr=m_cache_block_info_array[index]->getTag();
+	 addr=addr>>4;		
+	 if(addr % 4 == dst_slab)
+	 {		
+			// Invalidate it in slab_trNSFER FUNCTION
 			return (m_cache_block_info_array[index]);		
 	 }	 
-
+	 else
+	{
+		// It belongs to some other slab :DO NOT INVALIDATE
+	}
       }
    }
    return NULL;
@@ -123,7 +127,7 @@ CacheSet::find_slab_mod(UInt32 set_index)
 			return (m_cache_block_info_array[index]);		
       }
       else
-      {
+      {		
 		m_cache_block_info_array[index]->invalidate();
       }
    }
@@ -164,7 +168,7 @@ CacheSet::insert(CacheBlockInfo* cache_block_info, Byte* fill_buff, bool* evicti
       // FIXME: This is a hack. I dont know if this is the best way to do
       evict_block_info->clone(m_cache_block_info_array[index]);
 	
-//	VERI_LOG("insert-evict assoc:%d tag:%x",index,evict_block_info->getTag());
+	//VERI_LOG("insert-evict assoc:%d tag:%x",index,evict_block_info->getTag());
 
       if (evict_buff != NULL && m_blocks != NULL)
       {
@@ -182,9 +186,37 @@ CacheSet::insert(CacheBlockInfo* cache_block_info, Byte* fill_buff, bool* evicti
 
    // FIXME: This is a hack. I dont know if this is the best way to do
 	
+	//VERI_LOG("BEFORE insert of tag:%x ",cache_block_info->getTag());
+	for(UInt32 i=0;i< m_associativity;i++)
+	{
+		if(m_cache_block_info_array[i]->isValid())
+		{
+		//	VERI_LOG("way:%d tag:%x addr:%x",i,m_cache_block_info_array[i]->getTag(),m_cache_block_info_array[i]->getTag()<<6);
+		}
+		else
+		{
+		//	VERI_LOG("way:%d tag:NULL addr:NULL",i);
+		}
+	}
+	
    m_cache_block_info_array[index]->clone(cache_block_info);
-
-//   VERI_LOG("inserting in block assoc:%d  tag:%x state:%d",index,m_cache_block_info_array[index]->getTag(),m_cache_block_info_array[index]->getCState());	
+if(*eviction)
+	{
+	//VERI_LOG("replace way:%d tag:%x addr:%x",index,m_cache_block_info_array[index]->getTag(),m_cache_block_info_array[index]->getTag()<<6);
+}
+	//VERI_LOG("AFTER insert");
+	for(UInt32 i=0;i< m_associativity;i++)
+	{
+		if(m_cache_block_info_array[i]->isValid())
+		{
+		//	VERI_LOG("way:%d tag:%x addr:%x",i,m_cache_block_info_array[i]->getTag(),m_cache_block_info_array[i]->getTag()<<6);
+		}
+		else
+		{
+		//	VERI_LOG("way:%d tag:NULL addr:NULL",i);
+		}
+	}
+   //VERI_LOG("inserting in block assoc:%d  tag:%x state:%d",index,m_cache_block_info_array[index]->getTag(),m_cache_block_info_array[index]->getCState());	
 
    if (fill_buff != NULL && m_blocks != NULL)
    {    

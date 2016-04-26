@@ -468,13 +468,16 @@ MemoryManager::coreInitiateMemoryAccess(core_id_t m_core_id,
    else if (mem_component == MemComponent::L1_DCACHE && m_dtlb)
       accessTLB(m_dtlb, address, false, modeled);
 
-   return m_cache_cntlrs[mem_component]->processMemOpFromCore(m_core_id,
+	//VERI_LOG("START");
+HitWhere::where_t var= m_cache_cntlrs[mem_component]->processMemOpFromCore(m_core_id,
          lock_signal,
          mem_op_type,
          address, offset,
          data_buf, data_length,
          modeled == Core::MEM_MODELED_NONE || modeled == Core::MEM_MODELED_COUNT ? false : true,
          modeled == Core::MEM_MODELED_NONE ? false : true);
+	//VERI_LOG("END");
+	return var;
 }
 
 void

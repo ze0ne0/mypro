@@ -115,7 +115,13 @@ CacheMasterCntlr::accessATDs(Core::mem_op_t mem_op_type, bool hit, IntPtr addres
 
 CacheMasterCntlr::~CacheMasterCntlr()
 {
+	//PRAK_LOG("MASTER-DESTRUCTOR CALLED");
    delete m_cache;
+   if(m_slab_cntlr)
+   {
+	delete m_slab_cntlr;
+	m_slab_cntlr=NULL;
+   }	
    for(std::vector<ATD*>::iterator it = m_atds.begin(); it != m_atds.end(); ++it)
    {
       delete *it;
@@ -180,6 +186,10 @@ CacheCntlr::CacheCntlr(MemComponent::component_t mem_component,
             	m_core_id,this,Sim()->getFaultinjectionManager()
                ? Sim()->getFaultinjectionManager()->getFaultInjector(m_core_id_master,mem_component)
                : NULL);
+		}
+		else
+		{
+			m_master->m_slab_cntlr =NULL;
 		}
 m_master->m_cache = new Cache(name,
             "perf_model/" + cache_params.configName,
@@ -316,7 +326,9 @@ CacheCntlr::setPrevCacheCntlrs(CacheCntlrList& prev_cache_cntlrs)
    /* Append our prev_caches list to the master one (only master nodes) */
    for(CacheCntlrList::iterator it = prev_cache_cntlrs.begin(); it != prev_cache_cntlrs.end(); it++)
       if ((*it)->isMasterCache())
-         m_master->m_prev_cache_cntlrs.push_back(*it);
+      {  	PRAK_LOG("set prev ctrl for:%s candidate:%s",getName(),(*it)->getName());
+		 m_master->m_prev_cache_cntlrs.push_back(*it);
+	}
    #ifdef ENABLE_TRACK_SHARING_PREVCACHES
    LOG_ASSERT_ERROR(m_master->m_prev_cache_cntlrs.size() <= MAX_NUM_PREVCACHES, "shared locations vector too small, increase MAX_NUM_PREVCACHES to at least %u", m_master->m_prev_cache_cntlrs.size());
    #endif
@@ -350,8 +362,8 @@ CacheCntlr::processMemOpFromCore(core_id_t m_core_id,
 
    LOG_PRINT("processMemOpFromCore(), lock_signal(%u), mem_op_type(%u), ca_address(0x%x)",
              lock_signal, mem_op_type, ca_address);
-VERI_LOG("----------------------------------------------");
-VERI_LOG("%c%c %lx+%u..+%u", mem_op_type == Core::WRITE ? 'W' : 'R', mem_op_type == Core::READ_EX ? 'X' : ' ', ca_address, offset, data_length);
+//VERI_LOG("----------------------------------------------");
+//VERI_LOG("%c%c %lx+%u..+%u", mem_op_type == Core::WRITE ? 'W' : 'R', mem_op_type == Core::READ_EX ? 'X' : ' ', ca_address, offset, data_length);
 LOG_ASSERT_ERROR((ca_address & (getCacheBlockSize() - 1)) == 0, "address at cache line + %x", ca_address & (getCacheBlockSize() - 1));
 LOG_ASSERT_ERROR(offset + data_length <= getCacheBlockSize(), "access until %u > %u", offset + data_length, getCacheBlockSize());
 
@@ -395,7 +407,6 @@ LOG_ASSERT_ERROR(offset + data_length <= getCacheBlockSize(), "access until %u >
          insertCacheBlock(ca_address, mem_op_type == Core::READ ? CacheState::SHARED : CacheState::MODIFIED, NULL, m_core_id, ShmemPerfModel::_USER_THREAD);
          cache_block_info = getCacheBlockInfo(ca_address);
 
-	
       }
    }
    else if (cache_hit && m_passthrough)//-----------------------*****NOT OUR CASE********************
@@ -417,7 +428,7 @@ LOG_ASSERT_ERROR(offset + data_length <= getCacheBlockSize(), "access until %u >
 //-------------------NOW OUR CASE STARTS
    if (cache_hit)
    {
-	VERI_LOG("L1 hit");
+	//VERI_LOG("L1 hit");
       getMemoryManager()->incrElapsedTime(m_mem_component, CachePerfModel::ACCESS_CACHE_DATA_AND_TAGS, ShmemPerfModel::_USER_THREAD);
       hit_where = (HitWhere::where_t)m_mem_component;
 
@@ -514,13 +525,14 @@ LOG_ASSERT_ERROR(offset + data_length <= getCacheBlockSize(), "access until %u >
          invalidateCacheBlock(ca_address);
       }
 
-      VERI_LOG("calling processMemOpFromCore from =%s", getName());
+     // VERI_LOG("calling processMemOpFromCore from =%s", getName());
 
 	//----PRAK_LOG();
+	m_next_cache_cntlr->getSlabLock().acquire();
       hit_where = m_next_cache_cntlr->processShmemReqFromPrevCache(m_core_id,this, mem_op_type, ca_address, modeled, count, Prefetch::NONE, t_start, false);
       bool next_cache_hit = hit_where != HitWhere::MISS;
 
-      VERI_LOG("after processMemOpFromCore in %s  next hit = %d", getName(), next_cache_hit);
+  //    VERI_LOG("after processMemOpFromCore in %s  next hit = %d", getName(), next_cache_hit);
 
       if (next_cache_hit) 
       {
@@ -565,11 +577,15 @@ MYLOG("processMemOpFromCore l%d after next fill", m_mem_component);
 
       /* data should now be in next-level cache, go get it */
       SubsecondTime t_now = getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD);
-
+	
       copyDataFromNextLevel(mem_op_type, ca_address, modeled, t_now);
+
+
+      m_next_cache_cntlr->getSlabLock().release();
 
       cache_block_info = getCacheBlockInfo(ca_address);
 
+	
       #ifdef PRIVATE_L2_OPTIMIZATION
       #else
       if (!lock_all)
@@ -598,7 +614,7 @@ MYLOG("processMemOpFromCore l%d after next fill", m_mem_component);
       }
    }
 
-	//VERI_LOG("Acessing first level cache");
+	VERI_LOG("Acessing first level cache");
 		accessCache(mem_op_type, ca_address, offset, data_buf, data_length, hit_where == HitWhere::where_t(m_mem_component) && count);
 	VERI_LOG("access done");
 
@@ -638,7 +654,7 @@ MYLOG("processMemOpFromCore l%d after next fill", m_mem_component);
          stats.loads_where[hit_where]++;
    }
 
-
+//VERI_LOG("access done2");
    if (modeled && m_master->m_prefetcher)
    {
       trainPrefetcher(ca_address, cache_hit, prefetch_hit, t_start);
@@ -653,7 +669,7 @@ MYLOG("processMemOpFromCore l%d after next fill", m_mem_component);
    if (Sim()->getConfig()->getCacheEfficiencyCallbacks().notify_access_func)
       Sim()->getConfig()->getCacheEfficiencyCallbacks().call_notify_access(cache_block_info->getOwner(), mem_op_type, hit_where);
 
-   VERI_LOG("*-----------returning from memopcore-Hitwhere %s, latency %lu ns", HitWhereString(hit_where), total_latency.getNS());
+   VERI_LOG("*returning ");
    return hit_where;
 }
 
@@ -680,12 +696,13 @@ CacheCntlr::getCacheState_slab(IntPtr address,core_id_t m_core_id)
 void
 CacheCntlr::copyDataFromNextLevel(Core::mem_op_t mem_op_type, IntPtr address, bool modeled, SubsecondTime t_now)
 {
-   // TODO: what if it's already gone? someone else may invalitate it between the time it arrived an when we get here...
+	VERI_LOG("copyDataFromNextLevel called:%s c_in:%s",getName(),m_next_cache_cntlr->getName());
+
    LOG_ASSERT_ERROR(m_next_cache_cntlr->m_master->m_slab_cntlr->operationPermissibleinCache_slab(0,address, mem_op_type),
       "Tried to read from next-level cache, but data is already gone");
 
 //MYLOG("copyDataFromNextLevel l%d", m_mem_component);
-	//VERI_LOG("copyDataFromNextLevel called:%s c_in:%s",getName(),m_next_cache_cntlr->getName());
+	
 
    Byte data_buf[m_next_cache_cntlr->getCacheBlockSize()];
 
@@ -712,9 +729,10 @@ CacheCntlr::copyDataFromNextLevel(Core::mem_op_t mem_op_type, IntPtr address, bo
    if (cache_block_info)
    {
       // Block already present (upgrade): don't insert, but update
+	VERI_LOG("copyDataFromNextLevel called update %s add:%x done (updating)", getName(),address);
       updateCacheBlock(address, cstate, Transition::UPGRADE, NULL, ShmemPerfModel::_SIM_THREAD);
       //MYLOG("copyDataFromNextLevel %s done (updated)", getName());
-	//VERI_LOG("copyDataFromNextLevel %s done (updated)", getName());
+	
    }
    else
    {
@@ -722,8 +740,9 @@ CacheCntlr::copyDataFromNextLevel(Core::mem_op_t mem_op_type, IntPtr address, bo
       insertCacheBlock(address, cstate, data_buf, m_core_id, ShmemPerfModel::_USER_THREAD);
 //      MYLOG("copyDataFromNextLevel %s done (inserted)",getName());
 
-     // PRAK_LOG("copyDataFromNextLevel %s done (inserted)",getName());	
+     //PRAK_LOG("copyDataFromNextLevel called insert %s add:%xdone (inserted)",getName(),address);	
    }
+//VERI_LOG("copyDataFromNextLevel %s done (inserted)",getName());	
 }
 
 
@@ -795,7 +814,7 @@ CacheCntlr::doPrefetch(IntPtr prefetch_address, SubsecondTime t_start)
 {
    ++stats.prefetches;
    acquireStackLock(prefetch_address);
-   VERI_LOG("prefetching %lx", prefetch_address);
+ //  VERI_LOG("prefetching %lx", prefetch_address);
    SubsecondTime t_before = getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD);
    getShmemPerfModel()->setElapsedTime(ShmemPerfModel::_USER_THREAD, t_start); // Start the prefetch at the same time as the original miss
    HitWhere::where_t hit_where = processShmemReqFromPrevCache(0,this, Core::READ, prefetch_address, true, true, Prefetch::OWN, t_start, false);
@@ -826,7 +845,7 @@ HitWhere::where_t
 CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* requester, Core::mem_op_t mem_op_type, IntPtr address, bool modeled, bool count, Prefetch::prefetch_type_t isPrefetch, SubsecondTime t_issue, bool have_write_lock)
 {
 
-	VERI_LOG("processshmem:%s",getName());
+//	VERI_LOG("processshmem:%s",getName());
 	//--NO L2 OPTIMIZATION --DON'T WORRY ABOUT THIS
    #ifdef PRIVATE_L2_OPTIMIZATION
    bool have_write_lock_internal = have_write_lock;
@@ -866,7 +885,7 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
    }
 
    if (cache_hit)
-   {
+   {	VERI_LOG("L2 HIT");
       if (cache_block_info->hasOption(CacheBlockInfo::WARMUP) && Sim()->getInstrumentationMode() != InstMode::CACHE_ONLY)
       {
          stats.hits_warmup++;
@@ -904,13 +923,13 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
          {
             if (*it != requester)
             {
-		VERI_LOG("!= core read UPDATING1:%s",(*it)->getName());
+		VERI_LOG("!= core read from cache :%s UPDATING1:%s",getName(),(*it)->getName());
                std::pair<SubsecondTime, bool> res = (*it)->updateCacheBlock(address, CacheState::INVALID, Transition::COHERENCY, NULL, ShmemPerfModel::_USER_THREAD);
                latency = getMax<SubsecondTime>(latency, res.first);
                sibling_hit |= res.second;
             }
          }
-         VERI_LOG("add latency %s, sibling_hit(%u)", itostr(latency).c_str(), sibling_hit);
+    //     VERI_LOG("add latency %s, sibling_hit(%u)", itostr(latency).c_str(), sibling_hit);
          getMemoryManager()->incrElapsedTime(latency, ShmemPerfModel::_USER_THREAD);
          atomic_add_subsecondtime(stats.snoop_latency, latency);
          #ifdef ENABLE_TRACK_SHARING_PREVCACHES
@@ -919,35 +938,35 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
       }
       else if (cache_block_info->getCState() == CacheState::MODIFIED) // reading MODIFIED data
       {
-         VERI_LOG("reading MODIFIED data");
+     //    VERI_LOG("reading MODIFIED data");
          /* Writeback in previous levels */
          SubsecondTime latency = SubsecondTime::Zero();
          for(CacheCntlrList::iterator it = m_master->m_prev_cache_cntlrs.begin(); it != m_master->m_prev_cache_cntlrs.end(); it++) {
             if (*it != requester) {
-			VERI_LOG("UPDATING2:%s",(*it)->getName());
+			VERI_LOG("modified UPDATING2:%s",(*it)->getName());
                std::pair<SubsecondTime, bool> res = (*it)->updateCacheBlock(address, CacheState::SHARED, Transition::COHERENCY, NULL, ShmemPerfModel::_USER_THREAD);
                latency = getMax<SubsecondTime>(latency, res.first);
                sibling_hit |= res.second;
             }
          }
-         VERI_LOG("add latency %s, sibling_hit(%u)", itostr(latency).c_str(), sibling_hit);
+       //  VERI_LOG("add latency %s, sibling_hit(%u)", itostr(latency).c_str(), sibling_hit);
          getMemoryManager()->incrElapsedTime(latency, ShmemPerfModel::_USER_THREAD);
          atomic_add_subsecondtime(stats.snoop_latency, latency);
       }
       else if (cache_block_info->getCState() == CacheState::EXCLUSIVE) // reading EXCLUSIVE data
       {
-         VERI_LOG("reading EXCLUSIVE data");
+     //    VERI_LOG("reading EXCLUSIVE data");
          // will have shared state
          SubsecondTime latency = SubsecondTime::Zero();
          for(CacheCntlrList::iterator it = m_master->m_prev_cache_cntlrs.begin(); it != m_master->m_prev_cache_cntlrs.end(); it++) {
-            if (*it != requester) {//PRAK_LOG("UPDATING3:%s",(*it)->getName());
+            if (*it != requester) {VERI_LOG("EX-UPDATING:%s",(*it)->getName());
                std::pair<SubsecondTime, bool> res = (*it)->updateCacheBlock(address, CacheState::SHARED, Transition::COHERENCY, NULL, ShmemPerfModel::_USER_THREAD);
                latency = getMax<SubsecondTime>(latency, res.first);
                sibling_hit |= res.second;
             }
          }
 
-         VERI_LOG("add latency %s, sibling_hit(%u)", itostr(latency).c_str(), sibling_hit);
+      //   VERI_LOG("add latency %s, sibling_hit(%u)", itostr(latency).c_str(), sibling_hit);
          getMemoryManager()->incrElapsedTime(latency, ShmemPerfModel::_USER_THREAD);
          atomic_add_subsecondtime(stats.snoop_latency, latency);
       }
@@ -963,7 +982,11 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
 
    }
    else // !cache_hit: either data is not here, or operation on data is not permitted
-   {
+   {	VERI_LOG("L2 MISS");
+//------------------------*********************************************************_______________________________________________________________________________
+
+	
+
       // Increment shared mem perf model cycle counts
       if (modeled)
          getMemoryManager()->incrElapsedTime(m_mem_component, CachePerfModel::ACCESS_CACHE_TAGS, ShmemPerfModel::_USER_THREAD);
@@ -974,7 +997,7 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
          SubsecondTime latency = SubsecondTime::Zero();
          for(CacheCntlrList::iterator it = m_master->m_prev_cache_cntlrs.begin(); it != m_master->m_prev_cache_cntlrs.end(); it++)
          {   if (*it != requester)
-		{VERI_LOG("UPDATING4:%s",(*it)->getName());
+		{VERI_LOG("SHARED-UPDATING4:%s",(*it)->getName());
                latency = getMax<SubsecondTime>(latency, (*it)->updateCacheBlock(address, CacheState::INVALID, Transition::UPGRADE, NULL, ShmemPerfModel::_USER_THREAD).first);
 		}
 	}
@@ -998,7 +1021,7 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
 	    {
 	          if (*it != requester)
 		   {
-			  VERI_LOG("UPDATING M-LLC:%s",(*it)->getName());		
+			 VERI_LOG("UPDATING M-LLC:%s",(*it)->getName());		
 	                  latency = getMax<SubsecondTime>(latency, (*it)->updateCacheBlock(address, CacheState::INVALID, Transition::UPGRADE, NULL, ShmemPerfModel::_USER_THREAD).first);
 		   }
 	    }	
@@ -1010,7 +1033,7 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
 
             cache_hit = true;
             hit_where = HitWhere::where_t(m_mem_component);
-            VERI_LOG("Silent upgrade from E -> M for address %lx", address);
+         //   VERI_LOG("Silent upgrade from E -> M for address %lx", address);
             cache_block_info->setCState(CacheState::MODIFIED);
          }
          else if (m_master->m_dram_cntlr)
@@ -1038,14 +1061,14 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
                getMemoryManager()->incrElapsedTime(latency, ShmemPerfModel::_USER_THREAD);
 
                // Insert the line. Be sure to use SHARED/MODIFIED as appropriate (upgrades are free anyway), we don't want to have to write back clean lines
-	 //      VERI_LOG("calling slab on:%s",MemComponentString(m_mem_component)); 
+	       VERI_LOG("calling insertcach on:%s",MemComponentString(m_mem_component)); 
 
 
 	 //insertCacheBlock(address, mem_op_type == Core::READ ? CacheState::SHARED : CacheState::MODIFIED, data_buf, m_core_id, 		ShmemPerfModel::_USER_THREAD);//prak-log-com
 
-               insertCacheBlock_slab(address, mem_op_type == Core::READ ? CacheState::SHARED : CacheState::MODIFIED, data_buf, 0, ShmemPerfModel::_USER_THREAD,0);
+               insertCacheBlock(address, mem_op_type == Core::READ ? CacheState::SHARED : CacheState::MODIFIED, data_buf, 0, ShmemPerfModel::_USER_THREAD,0);
 
-          //     VERI_LOG("calling slab ENDS on:%s",MemComponentString(m_mem_component)); 
+           //    VERI_LOG("calling slab ENDS on:%s",MemComponentString(m_mem_component)); 
 
                if (isPrefetch != Prefetch::NONE)
                   getCacheBlockInfo(address)->setOption(CacheBlockInfo::PREFETCH);
@@ -1054,6 +1077,9 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
             }
          }
       }
+	
+//------------------------*********************************************************_______________________________________________________________________________
+
    }
 
    if (cache_hit)
@@ -1080,7 +1106,7 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
    #else
    #endif
 
-   VERI_LOG("returning-HIT WHERE:: %s", HitWhereString(hit_where));
+  // VERI_LOG("returning-HIT WHEREend:: %s", HitWhereString(hit_where));
    return hit_where;
 }
 
@@ -1099,7 +1125,7 @@ CacheCntlr::notifyPrevLevelInsert(core_id_t core_id, MemComponent::component_t m
 void
 CacheCntlr::notifyPrevLevelEvict(core_id_t core_id, MemComponent::component_t mem_component, IntPtr address)
 {
-	VERI_LOG("EVICT-@%lx", address);
+	//VERI_LOG("EVICT-@%lx", address);
 
    if (m_master->m_evicting_buf && address == m_master->m_evicting_address) 
    {
@@ -1107,7 +1133,7 @@ CacheCntlr::notifyPrevLevelEvict(core_id_t core_id, MemComponent::component_t me
    } else {
       #ifdef ENABLE_TRACK_SHARING_PREVCACHES
       SharedCacheBlockInfo* cache_block_info = getCacheBlockInfo(address);
-	VERI_LOG("here in state %c", CStateString(getCacheState(address)));
+	//VERI_LOG("here in state %c", CStateString(getCacheState(address)));
       assert(cache_block_info);
       PrevCacheIndex idx = m_master->m_prev_cache_cntlrs.find(core_id, mem_component);
       cache_block_info->clearCachedLoc(idx);
@@ -1309,18 +1335,7 @@ CacheCntlr::operationPermissibleinCache(
       default:
          LOG_PRINT_ERROR("Unsupported mem_op_type: %u", mem_op_type);
          break;
-   }
-/*
-	if(block_info==NULL)
-	{
-		    PRAK_LOG("Miss:address %lx state %c: permissible %d", address, CStateString(cstate), cache_hit);
-	}
-
-	else
-	{
-		    PRAK_LOG("Hit: address %lx state %c: permissible %d", address, CStateString(cstate), cache_hit);
-	}
-*/	
+   }	
 
  //  VERI_LOG("CACHE:%s address %lx state %c: permissible %d",getName(),address, CStateString(cstate), cache_hit);
 
@@ -1349,18 +1364,193 @@ CacheCntlr::accessCache(
          // Write-through cache - Write the next level cache also
          if (m_cache_writethrough) {
             LOG_ASSERT_ERROR(m_next_cache_cntlr, "Writethrough enabled on last-level cache !?");
-VERI_LOG("writethrough start");
+//VERI_LOG("writethrough start");
 	//VERI_LOG("ACCESS-WRITETHROUG");
             m_next_cache_cntlr->writeCacheBlock(ca_address, offset, data_buf, data_length, ShmemPerfModel::_USER_THREAD);
-VERI_LOG("writethrough done");
+//VERI_LOG("writethrough done");
          }
          break;
 
       default:
          LOG_PRINT_ERROR("Unsupported Mem Op Type: %u", mem_op_type);
          break;
-   }
+   }//VERI_LOG("accessing cache:%s done",getName());
 }
+
+
+/*/--------------------------------------------------------
+void
+CacheCntlr:: forceEvict()
+{
+	if (eviction)
+	{
+		VERI_LOG("N-insert-evicting @%lx", evict_address);
+	
+		if (
+	         !m_next_cache_cntlr // Track at LLC
+        	 && !evict_block_info.hasOption(CacheBlockInfo::WARMUP) // Ignore blocks allocated during warmup ()
+	         && Sim()->getConfig()->hasCacheEfficiencyCallbacks()
+      		)
+      		{
+		         Sim()->getConfig()->getCacheEfficiencyCallbacks().call_notify_evict(false, evict_block_info.getOwner(), 
+			cache_block_info->getOwner(), evict_block_info.getUsage(), getCacheBlockSize() >> CacheBlockInfo::BitsUsedOffset);
+      		}
+
+		CacheState::cstate_t old_state = evict_block_info.getCState();
+		VERI_LOG("N-evicting @%lx (state %c)", evict_address, CStateString(old_state));
+      		{
+			 ScopedLock sl(getLock());
+			 transition(
+			    evict_address,
+			    Transition::EVICT,
+			    old_state,
+			    CacheState::INVALID
+			 );
+
+			 ++stats.evict[old_state];
+			 // Line was prefetched, but is evicted without ever being used
+			 if (evict_block_info.hasOption(CacheBlockInfo::PREFETCH))
+			    ++stats.evict_prefetch;
+			 if (evict_block_info.hasOption(CacheBlockInfo::WARMUP))
+			    ++stats.evict_warmup;
+      		}
+		VERI_LOG("N-evicting");
+
+		LOG_PRINT("Eviction: addr(0x%x)", evict_address);
+
+		if (! m_master->m_prev_cache_cntlrs.empty()) 
+		{
+			 ScopedLock sl(getLock());
+			 /// propagate the update to the previous levels. they will write modified data back to our evict buffer when needed 
+			 m_master->m_evicting_address = evict_address;
+			 m_master->m_evicting_buf = evict_buf;
+
+			 SubsecondTime latency = SubsecondTime::Zero();
+			 for(CacheCntlrList::iterator it = m_master->m_prev_cache_cntlrs.begin(); 
+				it != m_master->m_prev_cache_cntlrs.end(); it++)
+			 {
+				VERI_LOG("N-INSERT NON-EMPTY-UPDT:%s",(*it)->getName());
+			    latency = getMax<SubsecondTime>(latency, (*it)->updateCacheBlock(evict_address, CacheState::INVALID,
+				 Transition::BACK_INVAL, NULL, thread_num).first);
+			 }
+			 getMemoryManager()->incrElapsedTime(latency, thread_num);
+			 atomic_add_subsecondtime(stats.snoop_latency, latency);
+
+			 m_master->m_evicting_address = 0;
+			 m_master->m_evicting_buf = NULL;
+		}
+
+      // now properly get rid of the evicted line //
+
+		if (m_perfect)
+		{
+		         // Nothing to do in this case
+		}
+		else if (!m_coherent)
+		{
+			 // Don't notify the next level, it may have already evicted the line itself and won't like our notifyPrevLevelEvict
+			 // Make sure the line wasn't modified though (unless we're writethrough), else data would have been lost
+			if (!m_cache_writethrough)
+		            LOG_ASSERT_ERROR(evict_block_info.getCState() != CacheState::MODIFIED, 
+				"Non-coherent cache is throwing away dirty data");
+		}
+		else if (m_next_cache_cntlr)
+		{
+			if (m_cache_writethrough) 
+			{
+		            // If we're a write-through cache the new data is in the next level already //
+			} else 
+			{
+	            // Send dirty block to next level cache. Probably we have an evict/victim buffer to do that when we're idle, so ignore timing //
+				if (evict_block_info.getCState() == CacheState::MODIFIED)
+		    		{	
+					VERI_LOG("N-calling writecacheblock");	
+					m_next_cache_cntlr->writeCacheBlock(evict_address, 0, evict_buf, getCacheBlockSize(), thread_num);
+					VERI_LOG("N-calling writecacheblock ends");	
+		    		}
+			}//VERI_LOG("N-calling notify prevlelvel starts");
+
+			m_next_cache_cntlr->notifyPrevLevelEvict(m_core_id_master, m_mem_component, evict_address);
+			//VERI_LOG("N-calling notify prevlelvel ends");
+      		}
+		else if (m_master->m_dram_cntlr)
+      		{
+			//VERI_LOG("N-DRAM EVICT");
+         		if (evict_block_info.getCState() == CacheState::MODIFIED)
+         		{
+            			SubsecondTime t_now = getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD);
+
+            			if (m_master->m_dram_outstanding_writebacks)
+            			{
+				       ScopedLock sl(getLock());
+				       // Delay if all evict buffers are full
+				       SubsecondTime t_issue = m_master->m_dram_outstanding_writebacks->getStartTime(t_now);
+				       getMemoryManager()->incrElapsedTime(t_issue - t_now, ShmemPerfModel::_USER_THREAD);
+            			}
+
+            			// Access DRAM
+			    SubsecondTime dram_latency;
+			    HitWhere::where_t hit_where;
+            			boost::tie<HitWhere::where_t, SubsecondTime>(hit_where, dram_latency) = accessDRAM(Core::WRITE,
+				 evict_address, false, evict_buf);
+		            // Occupy evict buffer
+			    if (m_master->m_dram_outstanding_writebacks)
+			    {
+			       ScopedLock sl(getLock());
+			       m_master->m_dram_outstanding_writebacks->getCompletionTime(t_now, dram_latency);
+			    }
+			}
+      		}
+     		else
+      		{
+		         // Send dirty block to directory //
+      		}
+
+		      LOG_ASSERT_ERROR(getCacheState(evict_address) == CacheState::INVALID, 
+			"Evicted address did not become invalid, now in state %s", CStateString(getCacheState(evict_address)));
+      			VERI_LOG("insertCacheBlock cache:%s evict done",getName());
+	}
+
+}
+*/
+//--------------------------------------------------------------------------
+void
+CacheCntlr:: print_slab(UInt32 slot,UInt32 slab,UInt32 m_num_sets)
+{
+	Cache **** slab_slot=m_master->m_slab_cntlr->getSlabSlotPtr();
+	for(UInt32 s=0;s<m_num_sets;s++)
+	{
+VERI_LOG("S:%d w0:%x w1:%x  w2:%x w3:%x  w4:%x w5:%x  w6:%x w7:%x",s,
+slab_slot[0][slot][slab]->peekBlock(s,0)->getTag(),
+slab_slot[0][slot][slab]->peekBlock(s,1)->getTag(),
+slab_slot[0][slot][slab]->peekBlock(s,2)->getTag(),
+slab_slot[0][slot][slab]->peekBlock(s,3)->getTag(),
+slab_slot[0][slot][slab]->peekBlock(s,4)->getTag(),
+slab_slot[0][slot][slab]->peekBlock(s,5)->getTag(),
+slab_slot[0][slot][slab]->peekBlock(s,6)->getTag(),
+slab_slot[0][slot][slab]->peekBlock(s,7)->getTag());
+	}
+VERI_LOG("--------------****-------------------");
+}
+
+void
+CacheCntlr:: print_set(UInt32 slot,UInt32 slab,UInt32 set)
+{
+	Cache **** slab_slot=m_master->m_slab_cntlr->getSlabSlotPtr();
+	VERI_LOG("SET_PRINT:SLOT:%d:SLAB:%d:SET:%d",slot,slab,set);
+		
+VERI_LOG("w0:%x w1:%x w2:%x w3:%x w4:%x w5:%x w6:%x w7:%x",
+slab_slot[0][slot][slab]->peekBlock(set,0)->getTag(),
+slab_slot[0][slot][slab]->peekBlock(set,1)->getTag(),
+slab_slot[0][slot][slab]->peekBlock(set,2)->getTag(),
+slab_slot[0][slot][slab]->peekBlock(set,3)->getTag(),
+slab_slot[0][slot][slab]->peekBlock(set,4)->getTag(),
+slab_slot[0][slot][slab]->peekBlock(set,5)->getTag(),
+slab_slot[0][slot][slab]->peekBlock(set,6)->getTag(),
+slab_slot[0][slot][slab]->peekBlock(set,7)->getTag());
+}
+
+//
 
 UInt32
 CacheCntlr:: slab_transfer(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,UInt32 dst_slab)
@@ -1369,47 +1559,70 @@ CacheCntlr:: slab_transfer(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,U
 	Byte data_buf[getCacheBlockSize()];
 	bool ****a_pattern=m_master->m_slab_cntlr->getPattern();
 	CacheBlockInfo* cache_block_info;
+	CacheBlockInfo* cache_block;
 
 	UInt32 m_associativity=m_master->m_slab_cntlr->getSlabAssoc();
-	UInt32 m_log_blocksize=m_master->m_slab_cntlr->getSlab_m_log_blocksize();
+	//UInt32 m_log_blocksize=m_master->m_slab_cntlr->getSlab_m_log_blocksize();
 	UInt32 m_num_sets_per_slab=m_master->m_slab_cntlr->getSlab_m_num_sets_per_slab();
 
 	UInt32 blk_tx=0;
+	VERI_LOG("-----------SLOT:%d-----SLAB:%d----->SLAB:%d",slot_index,src_slab,dst_slab);
+
+
+//	VERI_LOG("BEFORE TX-ON SLAB:%d",src_slab);
+//	print_slab(slot_index,src_slab,m_num_sets_per_slab);
+
+//	VERI_LOG("BEFORE TX-ON DST_SLAB:%d",dst_slab);
+//	print_slab(slot_index,dst_slab,m_num_sets_per_slab);
 
 	for(UInt32 i=0;i<m_num_sets_per_slab;i++)
 	{
-		if(a_pattern[0][slot_index][dst_slab][i]==true)
-		{
+		//if(a_pattern[0][slot_index][dst_slab][i]==true)
+		//{
+			
+			print_set(slot_index,src_slab,i);
+			print_set(slot_index,dst_slab,i);
+		
+
 			for(UInt32 j=0;j<m_associativity;j++)
 			{
 				cache_block_info=slab_slot[0][slot_index][src_slab]->peekSingleLine_slab(i,dst_slab);
-				
-
 				if(cache_block_info==NULL)
 				{	//No further  cache block for dest slab. We are done with this set
 					break;
 				}
 				else
-				{ blk_tx+=1;
-			        IntPtr insert_addr =slab_slot[0][slot_index][dst_slab]->tagToAddress(cache_block_info->getTag());
+				{ 
+					
+					blk_tx+=1;
+				        IntPtr insert_addr =slab_slot[0][slot_index][dst_slab]->tagToAddress(cache_block_info->getTag());			
+					CacheState::cstate_t cstate=cache_block_info->getCState();
 
-					insert_addr= insert_addr | (i<<m_log_blocksize) ;
+				VERI_LOG("insert set:%d way:%d tag:%x addr:%x from slab:%d in slot:%d--> slab :%d",cache_block_info->getTag(),i,j,insert_addr,src_slab,slot_index,dst_slab);
+					//insert_addr= insert_addr | (i<<m_log_blocksize) ;
 
-					slab_slot[0][slot_index][src_slab]->invalidateSingleLine(insert_addr);
-/*
-				slab_slot[core_id][slot_index][dst_slab]->insertSingleLine(insert_addr, data_buf,&eviction, &evict_address, &evict_block_info, evict_buf,getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD), this);
-
-   				 m_master->m_slab_cntlr->setCacheState_slab(insert_addr,getCacheState(cache_block_info),core_id);	
-*/
+					bool f=slab_slot[0][slot_index][src_slab]->invalidateSingleLine(insert_addr);
+					if(f==false)
+					{
+						VERI_LOG("can't invalidate addr:%x",insert_addr);
+					}
 //--------------------------------------------------------------------
+				//VERI_LOG("transferon add:%x from slab:%d to slab:%d",insert_addr,src_slab,dst_slab);	
 
-__attribute__((unused))	SharedCacheBlockInfo* variable=insertCacheBlock_slab(insert_addr,getCacheState(cache_block_info),data_buf,
+__attribute__((unused))	SharedCacheBlockInfo* variable=insertCacheBlock(insert_addr,cstate,data_buf,
 				core_id,ShmemPerfModel::_USER_THREAD,core_id);	
 //----------------------------------------------------------------------				   
 				}
 			}
-		}
+		//}
 	}
+
+	VERI_LOG("AFTER TX-ON SRC_SLAB:%d",src_slab);
+	print_slab(slot_index,src_slab,m_num_sets_per_slab);
+//
+	VERI_LOG("AFTER TX-ON DST_SLAB:%d",dst_slab);
+	print_slab(slot_index,dst_slab,m_num_sets_per_slab);
+//
 	return blk_tx;
 }
 
@@ -1419,18 +1632,30 @@ CacheCntlr:: slab_transfer_off(core_id_t core_id,UInt32 slot_index,UInt32 src_sl
 	Cache **** slab_slot=m_master->m_slab_cntlr->getSlabSlotPtr();
 	Byte data_buf[getCacheBlockSize()];
 	bool ****a_pattern=m_master->m_slab_cntlr->getPattern();
-	CacheBlockInfo* cache_block_info;
+	CacheBlockInfo* cache_block_info;CacheBlockInfo* cache_block;
 
 	UInt32 m_associativity=m_master->m_slab_cntlr->getSlabAssoc();
 	UInt32 m_log_blocksize=m_master->m_slab_cntlr->getSlab_m_log_blocksize();
 	UInt32 m_num_sets_per_slab=m_master->m_slab_cntlr->getSlab_m_num_sets_per_slab();
 
 	UInt32 blk_tx=0;
+VERI_LOG("-off----------SLOT:%d-----SLAB:%d----->SLAB:%d",slot_index,src_slab,dst_slab);
 
+/*
+	VERI_LOG("BEFORE TX-OFF SLAB:%d",src_slab);
+	print_slab(slot_index,src_slab,m_num_sets_per_slab);
+
+	VERI_LOG("BEFORE TX-OFF SLAB:%d",dst_slab);
+	print_slab(slot_index,dst_slab,m_num_sets_per_slab);
+*/
 	for(UInt32 i=0;i<m_num_sets_per_slab;i++)
 	{
-		if(a_pattern[0][slot_index][dst_slab][i]==true)
-		{
+		//if(a_pattern[0][slot_index][dst_slab][i]==true)
+		//{
+
+			print_set(slot_index,src_slab,i);
+			print_set(slot_index,dst_slab,i);
+
 			for(UInt32 j=0;j<m_associativity;j++)
 			{
 				//this will invalidate the non-modified block
@@ -1441,18 +1666,36 @@ CacheCntlr:: slab_transfer_off(core_id_t core_id,UInt32 slot_index,UInt32 src_sl
 				}
 				else
 				{
-					blk_tx+=1;
-			       IntPtr insert_addr =slab_slot[0][slot_index][dst_slab]->tagToAddress(cache_block_info->getTag());
-				// Tag is 22 bits + 4 bit set _index + 6 bit offset
-				// so shift set_idex to its position i.e 6 bit from right and or with tag; 
+				blk_tx+=1;
+				
+				IntPtr insert_addr =slab_slot[0][slot_index][dst_slab]->tagToAddress(cache_block_info->getTag());
 
-				insert_addr= insert_addr | (i<<m_log_blocksize) ;
+				CacheState::cstate_t cstate=cache_block_info->getCState();
+			
+				slab_slot[0][slot_index][src_slab]->invalidateSingleLine(insert_addr);
+				VERI_LOG("insert tag:%x addr:%x from slab:%d in slot:%d slab :%d",
+				cache_block_info->getTag(),insert_addr,src_slab,slot_index,dst_slab);
 
-			   __attribute__((unused)) 	SharedCacheBlockInfo* variable=insertCacheBlock_slab(insert_addr,CacheState::MODIFIED,data_buf,core_id,ShmemPerfModel::_USER_THREAD,core_id);			   
+				//VERI_LOG("transfer-off add:%x from slab:%d to slab:%d",insert_addr,src_slab,dst_slab);
+				__attribute__((unused)) SharedCacheBlockInfo* variable=insertCacheBlock		(insert_addr,
+				cstate,data_buf,core_id,ShmemPerfModel::_USER_THREAD,core_id);			   
 				}
 			}
-		}
+
+			for(UInt32 w=0;w<m_associativity;w++)
+			{
+				cache_block=slab_slot[0][slot_index][src_slab]->peekBlock(i,w);
+				cache_block->invalidate();
+			}
+		//}
 	}
+//
+	VERI_LOG("BEFORE TX-OFF SRC_SLAB:%d",src_slab);
+	print_slab(slot_index,src_slab,m_num_sets_per_slab);
+
+	VERI_LOG("BEFORE TX-OFF DST_SLAB:%d",dst_slab);
+	print_slab(slot_index,dst_slab,m_num_sets_per_slab);
+//
 	return blk_tx;
 }
 
@@ -1499,7 +1742,9 @@ CacheCntlr::invalidateCacheBlock(IntPtr address)
    m_master->m_cache->invalidateSingleLine(address);
 
    if (m_next_cache_cntlr)
-      m_next_cache_cntlr->notifyPrevLevelEvict(m_core_id_master, m_mem_component, address);
+   {		VERI_LOG("calling notifyprevevict from:%s to %s",getName(),m_next_cache_cntlr->getName());
+	   m_next_cache_cntlr->notifyPrevLevelEvict(m_core_id_master, m_mem_component, address);
+   }
 
    MYLOG("%lx %c > %c", address, CStateString(old_cstate), CStateString(getCacheState(address)));
 }
@@ -1507,7 +1752,7 @@ CacheCntlr::invalidateCacheBlock(IntPtr address)
 void
 CacheCntlr::retrieveCacheBlock(IntPtr address, Byte* data_buf, ShmemPerfModel::Thread_t thread_num, bool update_replacement,core_id_t m_core_id)
 {
-	VERI_LOG("retrive starts in :%s",getName());
+	//VERI_LOG("retrive starts in :%s",getName());
 	if(m_mem_component==MemComponent::L2_CACHE)
 	{	
 		
@@ -1516,23 +1761,28 @@ CacheCntlr::retrieveCacheBlock(IntPtr address, Byte* data_buf, ShmemPerfModel::T
 		 UInt32 slab_index,slot_index;
 	//	VERI_LOG("calling getslab in retrive");
 		slab_index=m_master->m_slab_cntlr->getSlab(address,slot_index,0);
-	//	VERI_LOG("calling accesssingle line addr:%x slab:%d slot:%d",address,slab_index,slot_index);
+	VERI_LOG("retrive calling accesssingle line addr:%x slab:%d slot:%d",address,slab_index,slot_index);
 
 	SharedCacheBlockInfo* cache_block_info = (SharedCacheBlockInfo*)  
 	m_master->m_slab_cntlr->getSlabSlotPtr()[0][slot_index][slab_index]->accessSingleLine(
       address, Cache::LOAD, data_buf, getCacheBlockSize(), getShmemPerfModel()->getElapsedTime(thread_num), update_replacement);
-
-   LOG_ASSERT_ERROR(cache_block_info != NULL, "Expected block to be there but it wasn't");
+/*
+	if(cache_block_info == NULL)
+	{
+		VERI_LOG("BLOCK VANISHED");return;
+	}
+*/
+   LOG_ASSERT_ERROR(cache_block_info != NULL, "Expected block to be there but it wasn't cache:%s",getName());
 
 	}
 	else 
 	{
    __attribute__((unused)) SharedCacheBlockInfo* cache_block_info = (SharedCacheBlockInfo*) m_master->m_cache->accessSingleLine(
       address, Cache::LOAD, data_buf, getCacheBlockSize(), getShmemPerfModel()->getElapsedTime(thread_num), update_replacement);
-   LOG_ASSERT_ERROR(cache_block_info != NULL, "Expected block to be there but it wasn't");
+   LOG_ASSERT_ERROR(cache_block_info != NULL, "Expected block to be there but it wasn't %s",getName());
 
 	}
-	VERI_LOG("retrive ends in :%s",getName());
+	//VERI_LOG("retrive ends in :%s",getName());
 }
 
 
@@ -1541,20 +1791,57 @@ CacheCntlr::retrieveCacheBlock(IntPtr address, Byte* data_buf, ShmemPerfModel::T
  *****************************************************************************/
 
 SharedCacheBlockInfo*
-CacheCntlr::insertCacheBlock(IntPtr address, CacheState::cstate_t cstate, Byte* data_buf, core_id_t requester, ShmemPerfModel::Thread_t thread_num)
+CacheCntlr::insertCacheBlock(IntPtr address, CacheState::cstate_t cstate, Byte* data_buf, core_id_t requester, ShmemPerfModel::Thread_t thread_num,core_id_t m_core_id)
 {
-VERI_LOG("N-insertCacheBlock %s @ %lx as %c (now %c)",getName(), address, CStateString(cstate), CStateString(getCacheState(address)));
+
+   VERI_LOG("N-insertCacheBlock %s @ %lx as %c (now %c)",getName(), address, CStateString(cstate), CStateString(getCacheState(address)));
+
    bool eviction;
    IntPtr evict_address;
    SharedCacheBlockInfo evict_block_info;
    Byte evict_buf[getCacheBlockSize()];
 
-   LOG_ASSERT_ERROR(getCacheState(address) == CacheState::INVALID, "we already have this line, can't add it again");
+   UInt32 slab_index,slot_index;
+   SharedCacheBlockInfo* cache_block_info;	
 
-   m_master->m_cache->insertSingleLine(address, data_buf,
+	if(m_mem_component==MemComponent::L2_CACHE)
+	{
+		//VERI_LOG("l2 insertslab");
+		if(m_master->m_slab_cntlr->getCacheState_slab(address,0)!=CacheState::INVALID)
+		{	VERI_LOG("DOUBLE@LINE");
+			slab_index=m_master->m_slab_cntlr->getSlab(address,slot_index,0);
+			print_slab(slot_index,slab_index,16);
+		}
+		LOG_ASSERT_ERROR(m_master->m_slab_cntlr->getCacheState_slab(address,0) == CacheState::INVALID, "we already have this line, can't add it again");
+
+		slab_index=m_master->m_slab_cntlr->getSlab(address,slot_index,0);
+	
+		VERI_LOG("inserting addr:%x in slot:%d slab :%d",address,slot_index,slab_index);
+ m_master->m_slab_cntlr->getSlabSlotPtr()[0][slot_index][slab_index]->insertSingleLine(address, data_buf,
          &eviction, &evict_address, &evict_block_info, evict_buf,
          getShmemPerfModel()->getElapsedTime(thread_num), this);
-   SharedCacheBlockInfo* cache_block_info = setCacheState(address, cstate);
+
+	cache_block_info = m_master->m_slab_cntlr->setCacheState_slab(address, cstate,0);
+
+	//VERI_LOG("SUCCESS");
+
+	}
+	else
+	{
+		//VERI_LOG("non-l2 cache insert ");
+
+	   LOG_ASSERT_ERROR(getCacheState(address) == CacheState::INVALID, "we already have this line, can't add it again l1");
+
+	   m_master->m_cache->insertSingleLine(address, data_buf,
+         &eviction, &evict_address, &evict_block_info, evict_buf,
+         getShmemPerfModel()->getElapsedTime(thread_num), this);
+	
+	 cache_block_info = setCacheState(address, cstate);
+	}
+//-------------------------------------------------------------------
+
+
+
 
    if (Sim()->getInstrumentationMode() == InstMode::CACHE_ONLY)
       cache_block_info->setOption(CacheBlockInfo::WARMUP);
@@ -1564,7 +1851,8 @@ VERI_LOG("N-insertCacheBlock %s @ %lx as %c (now %c)",getName(), address, CState
 
    if (m_next_cache_cntlr && !m_perfect)
       m_next_cache_cntlr->notifyPrevLevelInsert(m_core_id_master, m_mem_component, address);
-VERI_LOG("N-insertCacheBlock :%s local done", getName());
+
+	VERI_LOG("N-insertCacheBlock :%s local done", getName());
 
 
    if (eviction)
@@ -1581,7 +1869,7 @@ VERI_LOG("N-insertCacheBlock :%s local done", getName());
       }
 
       CacheState::cstate_t old_state = evict_block_info.getCState();
-      VERI_LOG("N-evicting @%lx (state %c)", evict_address, CStateString(old_state));
+     VERI_LOG("N-evicting @ %x (state %c)", evict_address, CStateString(old_state));
       {
          ScopedLock sl(getLock());
          transition(
@@ -1605,6 +1893,7 @@ VERI_LOG("N-insertCacheBlock :%s local done", getName());
 	VERI_LOG("N-evicting");
 
       LOG_PRINT("Eviction: addr(0x%x)", evict_address);
+
       if (! m_master->m_prev_cache_cntlrs.empty()) 
 	{
          ScopedLock sl(getLock());
@@ -1615,7 +1904,7 @@ VERI_LOG("N-insertCacheBlock :%s local done", getName());
          SubsecondTime latency = SubsecondTime::Zero();
          for(CacheCntlrList::iterator it = m_master->m_prev_cache_cntlrs.begin(); it != m_master->m_prev_cache_cntlrs.end(); it++)
 	 {
-		VERI_LOG("N-UPDT:%s",(*it)->getName());
+		VERI_LOG("N-INSERT NON-EMPTY-UPDT:%s",(*it)->getName());
             latency = getMax<SubsecondTime>(latency, (*it)->updateCacheBlock(evict_address, CacheState::INVALID, Transition::BACK_INVAL, NULL, thread_num).first);
 	 }
          getMemoryManager()->incrElapsedTime(latency, thread_num);
@@ -1645,17 +1934,19 @@ VERI_LOG("N-insertCacheBlock :%s local done", getName());
          } else {
             /* Send dirty block to next level cache. Probably we have an evict/victim buffer to do that when we're idle, so ignore timing */
             if (evict_block_info.getCState() == CacheState::MODIFIED)
-	    {	VERI_LOG("N-calling writecacheblock");	
-               m_next_cache_cntlr->writeCacheBlock(evict_address, 0, evict_buf, getCacheBlockSize(), thread_num);
-		VERI_LOG("N-calling writecacheblock ends");	
+	    {	
+		//VERI_LOG("N-calling writecacheblock");	
+	               m_next_cache_cntlr->writeCacheBlock(evict_address, 0, evict_buf, getCacheBlockSize(), thread_num);
+		//VERI_LOG("N-calling writecacheblock ends");	
 	    }
-         }VERI_LOG("N-calling notify prevlelvel starts");
+         }
+	VERI_LOG("insert->calling notifyprevevict from:%s to %s",getName(),m_next_cache_cntlr->getName());
          m_next_cache_cntlr->notifyPrevLevelEvict(m_core_id_master, m_mem_component, evict_address);
-	VERI_LOG("N-calling notify prevlelvel ends");
+	//VERI_LOG("N-calling notify prevlelvel ends");
       }
       else if (m_master->m_dram_cntlr)
       {
-	VERI_LOG("N-DRAM EVICT");
+	//VERI_LOG("N-DRAM EVICT");
          if (evict_block_info.getCState() == CacheState::MODIFIED)
          {
             SubsecondTime t_now = getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD);
@@ -1684,235 +1975,21 @@ VERI_LOG("N-insertCacheBlock :%s local done", getName());
       else
       {
          /* Send dirty block to directory */
-         UInt32 home_node_id = getHome(evict_address);
-         if (evict_block_info.getCState() == CacheState::MODIFIED)
-         {
-            // Send back the data also
-VERI_LOG("evict FLUSH %lx", evict_address);
-            getMemoryManager()->sendMsg(PrL1PrL2DramDirectoryMSI::ShmemMsg::FLUSH_REP,
-                  MemComponent::LAST_LEVEL_CACHE, MemComponent::TAG_DIR,
-                  m_core_id /* requester */,
-                  home_node_id /* receiver */,
-                  evict_address,
-                  evict_buf, getCacheBlockSize(),
-                  HitWhere::UNKNOWN, NULL, thread_num);
-         }
-         else
-         {
-VERI_LOG("evict INV %lx", evict_address);
-            LOG_ASSERT_ERROR(evict_block_info.getCState() == CacheState::SHARED || evict_block_info.getCState() == CacheState::EXCLUSIVE,
-                  "evict_address(0x%x), evict_state(%u)",
-                  evict_address, evict_block_info.getCState());
-            getMemoryManager()->sendMsg(PrL1PrL2DramDirectoryMSI::ShmemMsg::INV_REP,
-                  MemComponent::LAST_LEVEL_CACHE, MemComponent::TAG_DIR,
-                  m_core_id /* requester */,
-                  home_node_id /* receiver */,
-                  evict_address,
-                  NULL, 0,
-                  HitWhere::UNKNOWN, NULL, thread_num);
-         }
+      
       }
 
       LOG_ASSERT_ERROR(getCacheState(evict_address) == CacheState::INVALID, "Evicted address did not become invalid, now in state %s", CStateString(getCacheState(evict_address)));
-      VERI_LOG("insertCacheBlock cache:%s evict done",getName());
+     // VERI_LOG("insertCacheBlock cache:%s evict done",getName());
    }
 
    VERI_LOG("insertCacheBlock cache:%s end",getName());
    return cache_block_info;
 }
 
-//-------------------------------------------
-SharedCacheBlockInfo* 
-CacheCntlr::insertCacheBlock_slab(IntPtr address, CacheState::cstate_t cstate, Byte* data_buf, core_id_t requester, ShmemPerfModel::Thread_t thread_num,core_id_t m_core_id)
-{
-   VERI_LOG("*------insert-in-slab-***");
-   bool eviction;
-   IntPtr evict_address;
-   SharedCacheBlockInfo evict_block_info;
-   Byte evict_buf[getCacheBlockSize()];
-   UInt32 slab_index,slot_index;
-
-   slab_index=m_master->m_slab_cntlr->getSlab(address,slot_index,0);
-
-
-
-	if(m_mem_component!=MemComponent::L2_CACHE)
-	{
-	//	VERI_LOG("EMERGENCY RETURN NOT L2");
-		return NULL;
-	}
-
-VERI_LOG("M-insertCacheBlock %s @ %lx as %c (now %c)",getName(), address, CStateString(cstate), CStateString(m_master->m_slab_cntlr->getCacheState_slab(address,0)));
-	
-
-   LOG_ASSERT_ERROR(m_master->m_slab_cntlr->getCacheState_slab(address,0) == CacheState::INVALID, "we already have this line, can't add it again");
-
-	//VERI_LOG("M-calling insertsingle line addr:%x slab:%d slot:%d",address,slab_index,slot_index);
-
-   m_master->m_slab_cntlr->getSlabSlotPtr()[0][slot_index][slab_index]->insertSingleLine(address, data_buf,
-         &eviction, &evict_address, &evict_block_info, evict_buf,
-         getShmemPerfModel()->getElapsedTime(thread_num), this);
-
-//VERI_LOG("M-some error1");
-
-   SharedCacheBlockInfo* cache_block_info = m_master->m_slab_cntlr->setCacheState_slab(address, cstate,0);
-
-
-	//VERI_LOG("M-some error2");
-
-   if (Sim()->getInstrumentationMode() == InstMode::CACHE_ONLY)
-      cache_block_info->setOption(CacheBlockInfo::WARMUP);
-
-   if (Sim()->getConfig()->hasCacheEfficiencyCallbacks())
-      cache_block_info->setOwner(Sim()->getConfig()->getCacheEfficiencyCallbacks().call_get_owner(requester, address));
-
-   if (m_next_cache_cntlr && !m_perfect)//THIS WILL BE FALSE AS L2 IS LAST-LEVEL IN OUR CASE
-   {	
-	PRAK_LOG("M_NEXT_CACHE_CNTLR");
-	//   m_next_cache_cntlr->notifyPrevLevelInsert(m_core_id_master, m_mem_component, address);
-    }	
-
-   VERI_LOG("M-insertCacheBlock %s local done", getName());
-
-
-   if (eviction)
-   {
-	VERI_LOG("M-evicting @%lx", evict_address);
-
-      if (
-         !m_next_cache_cntlr // Track at LLC
-         && !evict_block_info.hasOption(CacheBlockInfo::WARMUP) // Ignore blocks allocated during warmup (we don't track usage then)
-         && Sim()->getConfig()->hasCacheEfficiencyCallbacks()
-      )
-      {
-         Sim()->getConfig()->getCacheEfficiencyCallbacks().call_notify_evict(false, evict_block_info.getOwner(), cache_block_info->getOwner(), evict_block_info.getUsage(), getCacheBlockSize() >> CacheBlockInfo::BitsUsedOffset);
-      }
-
-      CacheState::cstate_t old_state = evict_block_info.getCState();
-      VERI_LOG("M-evicting @%lx (state %c)", evict_address, CStateString(old_state));
-      {
-         ScopedLock sl(getLock());
-         transition(
-            evict_address,
-            Transition::EVICT,
-            old_state,
-            CacheState::INVALID
-         );
-
-         ++stats.evict[old_state];
-         // Line was prefetched, but is evicted without ever being used
-         if (evict_block_info.hasOption(CacheBlockInfo::PREFETCH))
-            ++stats.evict_prefetch;
-         if (evict_block_info.hasOption(CacheBlockInfo::WARMUP))
-            ++stats.evict_warmup;
-      }
-
-      /* TODO: this part looks a lot like updateCacheBlock's dirty case, but with the eviction buffer
-         instead of an address, and with a message to the directory at the end. Merge? */
-
-      LOG_PRINT("Eviction: addr(0x%x)", evict_address);
-      if (! m_master->m_prev_cache_cntlrs.empty()) 
-	{
-
-	VERI_LOG("M-UPDATECACHE BLOCK");
-
-         ScopedLock sl(getLock());
-         /* propagate the update to the previous levels. they will write modified data back to our evict buffer when needed */
-         m_master->m_evicting_address = evict_address;
-         m_master->m_evicting_buf = evict_buf;
-
-         SubsecondTime latency = SubsecondTime::Zero();
-         for(CacheCntlrList::iterator it = m_master->m_prev_cache_cntlrs.begin(); it != m_master->m_prev_cache_cntlrs.end(); it++)
-         {	//PRAK_LOG("forloop");
-	//	   latency = getMax<SubsecondTime>(latency, (*it)->updateCacheBlock(evict_address, CacheState::INVALID, Transition::BACK_INVAL, NULL, thread_num).first);
-	}
-         getMemoryManager()->incrElapsedTime(latency, thread_num);
-         atomic_add_subsecondtime(stats.snoop_latency, latency);
-
-         m_master->m_evicting_address = 0;
-         m_master->m_evicting_buf = NULL;
-      }
-
-      /* now properly get rid of the evicted line */
-
-      if (m_perfect)
-      {
-         // Nothing to do in this case
-      }
-      else if (!m_coherent)
-      {
-         // Don't notify the next level, it may have already evicted the line itself and won't like our notifyPrevLevelEvict
-         // Make sure the line wasn't modified though (unless we're writethrough), else data would have been lost
-         if (!m_cache_writethrough)
-            LOG_ASSERT_ERROR(evict_block_info.getCState() != CacheState::MODIFIED, "Non-coherent cache is throwing away dirty data");
-      }
-      else if (m_next_cache_cntlr)
-      {
-	VERI_LOG("M-m_next_cache_cntlr");
-         if (m_cache_writethrough) 
-	{
-            /* If we're a write-through cache the new data is in the next level already */
-        } else 
-	{
-            /* Send dirty block to next level cache. Probably we have an evict/victim buffer to do that when we're idle, so ignore timing */
-            if (evict_block_info.getCState() == CacheState::MODIFIED)
-               m_next_cache_cntlr->writeCacheBlock(evict_address, 0, evict_buf, getCacheBlockSize(), thread_num);
-         }
-         m_next_cache_cntlr->notifyPrevLevelEvict(m_core_id_master, m_mem_component, evict_address);
-      }
-      else if (m_master->m_dram_cntlr)
-      {
-	//PRAK_LOG("fordram");
-         if (evict_block_info.getCState() == CacheState::MODIFIED)
-         {
-            SubsecondTime t_now = getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_USER_THREAD);
-
-            if (m_master->m_dram_outstanding_writebacks)
-            {
-               ScopedLock sl(getLock());
-               // Delay if all evict buffers are full
-               SubsecondTime t_issue = m_master->m_dram_outstanding_writebacks->getStartTime(t_now);
-               getMemoryManager()->incrElapsedTime(t_issue - t_now, ShmemPerfModel::_USER_THREAD);
-            }
-
-            // Access DRAM
-            SubsecondTime dram_latency;
-            HitWhere::where_t hit_where;
-            boost::tie<HitWhere::where_t, SubsecondTime>(hit_where, dram_latency) = accessDRAM(Core::WRITE, evict_address, false, evict_buf);
-
-            // Occupy evict buffer
-            if (m_master->m_dram_outstanding_writebacks)
-            {
-               ScopedLock sl(getLock());
-               m_master->m_dram_outstanding_writebacks->getCompletionTime(t_now, dram_latency);
-            }
-         }
-
-	//VERI_LOG("M-fordramends");
-      }
-      else
-      {
-       	VERI_LOG("INELSE");
-      }
-
-     LOG_ASSERT_ERROR(m_master->m_slab_cntlr->getCacheState_slab(evict_address,0) == CacheState::INVALID, "Evicted address did not become invalid, now in state %s",CStateString(m_master->m_slab_cntlr->getCacheState_slab(evict_address,0)));
-     // MYLOG("insertCacheBlock l%d evict done", m_mem_component);
-   }
-
- //  VERI_LOG("M-insertCacheBlock CACHE:%s end",getName());
-   return cache_block_info;
-
-
-}
-
-
-
-//------------------------------------------------------
-
 std::pair<SubsecondTime, bool>
 CacheCntlr::updateCacheBlock(IntPtr address, CacheState::cstate_t new_cstate, Transition::reason_t reason, Byte* out_buf, ShmemPerfModel::Thread_t thread_num)
 {
-   VERI_LOG("updateCacheBlock:%s",getName());
+  VERI_LOG("updateCacheBlock:%s addr:%x ",getName(),address);
    LOG_ASSERT_ERROR(new_cstate < CacheState::NUM_CSTATE_STATES, "Invalid new cstate %u", new_cstate);
 
    /* first, propagate the update to the previous levels.they will write modified data back to us when needed */
@@ -1925,8 +2002,9 @@ CacheCntlr::updateCacheBlock(IntPtr address, CacheState::cstate_t new_cstate, Tr
 
    if (! m_master->m_prev_cache_cntlrs.empty())
    {
-      for(CacheCntlrList::iterator it = m_master->m_prev_cache_cntlrs.begin(); it != m_master->m_prev_cache_cntlrs.end(); it++) 
-	{ VERI_LOG("UPDATING :%s",getName())
+      for(CacheCntlrList::iterator it = m_master->m_prev_cache_cntlrs.begin(); it != m_master->m_prev_cache_cntlrs.end(); it++) {
+
+	VERI_LOG("cache:%s UPDATING in updat :%s",getName(),(*it)->getName())
          std::pair<SubsecondTime, bool> res = (*it)->updateCacheBlock(
             address, new_cstate, reason == Transition::EVICT ? Transition::BACK_INVAL : reason, NULL, thread_num);
 
@@ -2001,8 +2079,9 @@ CacheCntlr::updateCacheBlock(IntPtr address, CacheState::cstate_t new_cstate, Tr
 		{
 		    /* write straight into the next level cache */
 		    Byte data_buf[getCacheBlockSize()];
+VERI_LOG("updatcacheblock calling retrieve nextcntlr addr:%x",address);
 		    retrieveCacheBlock(address, data_buf, thread_num, false);//called on l1
-
+			VERI_LOG("updatcacheblock calling writecache nextcntlr addr:%x",address);
 		    m_next_cache_cntlr->writeCacheBlock(address, 0, data_buf, getCacheBlockSize(), thread_num);//may be in L2
 
 		    is_writeback = true;
@@ -2021,7 +2100,7 @@ CacheCntlr::updateCacheBlock(IntPtr address, CacheState::cstate_t new_cstate, Tr
 		    /* no-one will take my data !? */
 		    LOG_ASSERT_ERROR( cache_block_info->getCState() != CacheState::MODIFIED, "MODIFIED data is about to get lost!");
 		 }
-         cache_block_info->setCState(CacheState::SHARED);
+         cache_block_info->setCState(CacheState::SHARED);//since modified data written to shared cache  change state to shared
       }
 
       if (new_cstate == CacheState::INVALID)
@@ -2054,27 +2133,25 @@ CacheCntlr::updateCacheBlock(IntPtr address, CacheState::cstate_t new_cstate, Tr
       }
       else
       {
-         LOG_ASSERT_ERROR(false, "Cannot change block status to %c", CStateString(new_cstate));
+         LOG_ASSERT_ERROR(false, "Cannot change block status to %c :%s", CStateString(new_cstate),getName());
       }
    }
 
-   VERI_LOG("@%lx  %c > %c (req: %c)", address, CStateString(old_cstate),
-                                     CStateString(cache_block_info ? cache_block_info->getCState() : CacheState::INVALID),
-                                     CStateString(new_cstate));
+   VERI_LOG("@%lx  %c > %c (req: %c)", address, CStateString(old_cstate),CStateString(cache_block_info ? cache_block_info->getCState() : CacheState::INVALID),                                     CStateString(new_cstate));
 
    LOG_ASSERT_ERROR((getCacheState(address) == CacheState::INVALID) || (getCacheState(address) == new_cstate) || !m_coherent,
-         "state didn't change as we wanted: %c instead of %c", CStateString(getCacheState(address)), CStateString(new_cstate));
+         "state didn't change as we wanted: %c instead of %c cache:%s", CStateString(getCacheState(address)), CStateString(new_cstate),getName());
 
    CacheState::cstate_t current_cstate;
+
    current_cstate = (cache_block_info) ? cache_block_info->getCState(): CacheState::INVALID;
    LOG_ASSERT_ERROR((current_cstate == CacheState::INVALID) || (current_cstate == new_cstate) || !m_coherent,
-         "state didn't change as we wanted: %c instead of %c", CStateString(current_cstate), CStateString(new_cstate));
+         "state didn't change as we wanted: %c instead of %c cache:%s", CStateString(current_cstate), CStateString(new_cstate),getName());
+
    if (out_buf && !buf_written)
    {
       VERI_LOG("cache_block_info: %c", cache_block_info ? 'y' : 'n');
-      VERI_LOG("@%lx  %c > %c (req: %c)", address, CStateString(old_cstate),
-                                           CStateString(cache_block_info ? cache_block_info->getCState() : CacheState::INVALID),
-                                           CStateString(new_cstate));
+      VERI_LOG("@%lx  %c > %c (req: %c)", address, CStateString(old_cstate),CStateString(cache_block_info ? cache_block_info->getCState() : CacheState::INVALID),CStateString(new_cstate));
    }
    LOG_ASSERT_ERROR(out_buf ? buf_written : true, "out_buf passed in but never written to");
    /* Assume tag access caused by snooping is already accounted for in lower level cache access time,
@@ -2098,7 +2175,7 @@ MYLOG(" ");
 
    if (m_master->m_evicting_buf && (address == m_master->m_evicting_address)) 
    {
-      VERI_LOG("writing to evict buffer %lx", address);
+    //  VERI_LOG("writing to evict buffer %lx", address);
 
 	assert(offset==0);
 	assert(data_length==getCacheBlockSize());
@@ -2112,24 +2189,43 @@ MYLOG(" ");
   {
 	//PRAK_LOG
 
+	if(m_mem_component==MemComponent::L2_CACHE)
+	{
 	__attribute__((unused)) UInt32 slab_index,slot_index;
 
-		slab_index=m_master->m_slab_cntlr->getSlab(address,slot_index,0);
+	slab_index=m_master->m_slab_cntlr->getSlab(address,slot_index,0);
 
-/*    __attribute__((unused))*/ 
+    __attribute__((unused))
 SharedCacheBlockInfo* cache_block_info = (SharedCacheBlockInfo*) m_master->m_slab_cntlr->getSlabSlotPtr()[0][slot_index][slab_index]->accessSingleLine(
          address + offset, Cache::STORE, data_buf, data_length, getShmemPerfModel()->getElapsedTime(thread_num), false);
 
 
  //     __attribute__((unused)) SharedCacheBlockInfo* cache_block_info = (SharedCacheBlockInfo*) m_master->m_cache->accessSingleLine(
   //       address + offset, Cache::STORE, data_buf, data_length, getShmemPerfModel()->getElapsedTime(thread_num), false);//prak-log-com
+	if(cache_block_info==NULL)
+	{
+		VERI_LOG("block doesn't exist in this cache level how to writeback");return;
+	}
+	else if(  cache_block_info->getCState()!=CacheState::MODIFIED)
+	{
+		
+		VERI_LOG("NON-MOD WRITEBACK tag:%x state:%c",cache_block_info->getTag(),CStateString(cache_block_info->getCState()));return;
+	}
 
       LOG_ASSERT_ERROR(cache_block_info, "writethrough expected a hit at next-level cache but got miss");
       LOG_ASSERT_ERROR(cache_block_info->getCState() == CacheState::MODIFIED, "Got writeback for non-MODIFIED line");
+	}
+	else
+	{
+		 __attribute__((unused)) SharedCacheBlockInfo* cache_block_info = (SharedCacheBlockInfo*) m_master->m_cache->accessSingleLine(address + offset, Cache::STORE, data_buf, data_length, getShmemPerfModel()->getElapsedTime(thread_num), false);
+	 LOG_ASSERT_ERROR(cache_block_info, "writethrough expected a hit at next-level cache but got miss l1");
+      LOG_ASSERT_ERROR(cache_block_info->getCState() == CacheState::MODIFIED, "Got writeback for non-MODIFIED line l1");
+	}
    }
 
    if (m_cache_writethrough) 
-   {	VERI_LOG("WRITE2:%s",getName());
+   {	
+	VERI_LOG("WRITE2:%s",getName());
       acquireStackLock(true);
       m_next_cache_cntlr->writeCacheBlock(address, offset, data_buf, data_length, thread_num);
       releaseStackLock(true);

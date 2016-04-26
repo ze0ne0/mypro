@@ -24,8 +24,7 @@ Cache::Cache(
    m_cache_type(cache_type),
    m_fault_injector(fault_injector)
 {
-	
-	//PRAK_LOG("Allocating cache.cc by core=%d cach.cfg=%s",core_id,cfgname.c_str());
+//	PRAK_LOG("Allocating cache.cc by core=%d cach.cfg=%s",core_id,cfgname.c_str());
 
 
 
@@ -106,19 +105,19 @@ Cache::accessSingleLine(IntPtr addr, access_t access_type,
 
    splitAddress(addr, tag, set_index, block_offset);
 
-   //VERI_LOG("Access single line starts addr:%x tag:%x set:%d",addr,tag,set_index);
+ //  VERI_LOG("Access single line starts addr:%x tag:%x set:%d",addr,tag,set_index);
 
    CacheSet* set = m_sets[set_index];
 
    CacheBlockInfo* cache_block_info = set->find(tag, &line_index);
-	//VERI_LOG("after find");
+//	VERI_LOG("after find");
    if (cache_block_info == NULL)
    {
-	//VERI_LOG("return:>set tag find=null addr:%x tag:%x set:%d",addr,tag,set_index);
+//	VERI_LOG("return:>set tag find=null addr:%x tag:%x set:%d",addr,tag,set_index);
         return NULL;
    }
-
-	//VERI_LOG("return:>set tag find=null addr:%x tag:%x set:%d",addr,tag,set_index);
+//   else
+//	VERI_LOG("return:>set tag find=null addr:%x tag:%x set:%d",addr,tag,set_index);
 		
    if (access_type == LOAD)
    {
@@ -152,10 +151,13 @@ Cache::insertSingleLine(IntPtr addr, Byte* fill_buff,
 
    CacheBlockInfo* cache_block_info = CacheBlockInfo::create(m_cache_type);
    cache_block_info->setTag(tag);
-//	VERI_LOG("set tag:%x",tag);
+	//VERI_LOG("set tag:%x",tag);
    m_sets[set_index]->insert(cache_block_info, fill_buff,
          eviction, evict_block_info, evict_buff, cntlr);
-   *evict_addr = tagToAddress(evict_block_info->getTag());
+	if(*eviction==true)
+	{
+   		*evict_addr = tagToAddress(evict_block_info->getTag());
+	}
 
    if (m_fault_injector) {
       // NOTE: no callback is generated for read of evicted data
@@ -169,7 +171,7 @@ Cache::insertSingleLine(IntPtr addr, Byte* fill_buff,
    #ifdef ENABLE_SET_USAGE_HIST
    ++m_set_usage_hist[set_index];
    #endif
-	//VERI_LOG("insetsingle line addr:%x set:%d",addr,set_index);
+//	VERI_LOG("insetsingle line addr:%x set:%d",addr,set_index);
    delete cache_block_info;
 }
 

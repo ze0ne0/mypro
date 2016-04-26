@@ -43,7 +43,7 @@ private:
 
 		UInt32 **slot_access;
 
-		Lock a_lock,b_lock,c_lock;	
+		Lock a_lock,b_lock,c_lock,recon;	
 
 		UInt32 m_num_slots;
 		UInt32 m_num_cores;
@@ -65,7 +65,7 @@ public:
 		bool operationPermissibleinCache_slab(core_id_t m_core_id,
                	IntPtr address, Core::mem_op_t mem_op_type, CacheBlockInfo **cache_block_info = NULL);
 
-		UInt32 getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id) const;
+		UInt32 getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id,UInt32 *slab_orig=NULL) const;
 
 		bool **** getPattern()
 		{ 
@@ -80,6 +80,9 @@ public:
          CacheState::cstate_t getCacheState_slab(IntPtr address,core_id_t m_core_id);
          CacheState::cstate_t getCacheState_slab(CacheBlockInfo *cache_block_info);
          SharedCacheBlockInfo* setCacheState_slab(IntPtr address,CacheState::cstate_t cstate,core_id_t m_core_id);
+	 UInt32 getSetIndex(IntPtr address);
+	void print_stats();
+	void reset_stats();
 
 //------------------------------------------------
 };

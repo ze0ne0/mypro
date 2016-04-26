@@ -156,6 +156,7 @@ namespace ParametricDramDirectoryMSI
 	 SlabCntlr *m_slab_cntlr;
 
          Lock m_cache_lock;
+	 Lock lockme;
          Lock m_smt_lock; //< Only used in L1 cache, to protect against concurrent access from sibling SMT threads
          CacheCntlrList m_prev_cache_cntlrs;
          Prefetcher* m_prefetcher;
@@ -186,7 +187,7 @@ namespace ParametricDramDirectoryMSI
 
          void accessATDs(Core::mem_op_t mem_op_type, bool hit, IntPtr address, UInt32 core_num);
 
-       
+         
 
          CacheMasterCntlr(String name, core_id_t core_id, UInt32 outstanding_misses)
             : m_cache(NULL)
@@ -225,6 +226,7 @@ namespace ParametricDramDirectoryMSI
          bool m_coherent;
          bool m_prefetch_on_prefetch_hit;
          bool m_l1_mshr;
+	 
 
          struct {
            UInt64 loads, stores;
@@ -309,11 +311,7 @@ namespace ParametricDramDirectoryMSI
          void retrieveCacheBlock(IntPtr address, Byte* data_buf, ShmemPerfModel::Thread_t thread_num, bool update_replacement,core_id_t m_core_id=0);
 
 
-         SharedCacheBlockInfo* insertCacheBlock(IntPtr address, CacheState::cstate_t cstate, Byte* data_buf, core_id_t requester, ShmemPerfModel::Thread_t thread_num);
-
-SharedCacheBlockInfo* insertCacheBlock_slab(IntPtr address, CacheState::cstate_t cstate, Byte* data_buf, core_id_t requester, ShmemPerfModel::Thread_t thread_num,core_id_t m_core_id);
-
-
+         SharedCacheBlockInfo* insertCacheBlock(IntPtr address, CacheState::cstate_t cstate, Byte* data_buf, core_id_t requester, ShmemPerfModel::Thread_t thread_num,core_id_t m_core_id=0);
 
          std::pair<SubsecondTime, bool> updateCacheBlock(IntPtr address, CacheState::cstate_t cstate, Transition::reason_t reason, Byte* out_buf, ShmemPerfModel::Thread_t thread_num);
          void writeCacheBlock(IntPtr address, UInt32 offset, Byte* data_buf, UInt32 data_length, ShmemPerfModel::Thread_t thread_num);
@@ -381,7 +379,12 @@ SharedCacheBlockInfo* insertCacheBlock_slab(IntPtr address, CacheState::cstate_t
 
          Cache* getCache() { return m_master->m_cache; }
          Lock& getLock() { return m_master->m_cache_lock; }
-
+         virtual Lock& getSlabLock() { return m_master->lockme; }
+/*	 Lock& getSlabLock(UInt32 slot,UInt32 slab)
+	 {
+		return m_master->m_slab_cntlr->getSlabLock(slot,slab);	
+	 }	
+*/
          void setPrevCacheCntlrs(CacheCntlrList& prev_cache_cntlrs);
          void setNextCacheCntlr(CacheCntlr* next_cache_cntlr) { m_next_cache_cntlr = next_cache_cntlr; }
          void createSetLocks(UInt32 cache_block_size, UInt32 num_sets, UInt32 core_offset, UInt32 num_cores) { m_master->createSetLocks(cache_block_size, num_sets, core_offset, num_cores); }
@@ -405,7 +408,7 @@ SharedCacheBlockInfo* insertCacheBlock_slab(IntPtr address, CacheState::cstate_t
          // Notify next level cache of so it can update its sharing set
          void notifyPrevLevelInsert(core_id_t core_id, MemComponent::component_t mem_component, IntPtr address);
          void notifyPrevLevelEvict(core_id_t core_id, MemComponent::component_t mem_component, IntPtr address);
-
+	 
          // Handle message from Dram Dir
          void handleMsgFromDramDirectory(core_id_t sender, PrL1PrL2DramDirectoryMSI::ShmemMsg* shmem_msg);
          // Acquiring and Releasing per-set Locks
@@ -423,7 +426,8 @@ SharedCacheBlockInfo* insertCacheBlock_slab(IntPtr address, CacheState::cstate_t
 
          bool isInLowerLevelCache(CacheBlockInfo *block_info);
          void incrementQBSLookupCost();
-
+	void print_set(UInt32 slot,UInt32 slab,UInt32 set);
+	void print_slab(UInt32 slot,UInt32 slab,UInt32 m_num_sets);
 
 	 CacheCntlr * getMyCntlr()
 	 { return this;}

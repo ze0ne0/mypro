@@ -63,7 +63,7 @@ SlabCntlr::SlabCntlr(
 			for(UInt32 j=0;j<m_num_slabs_per_slot;j++)
 			{
 
-				//PRAK_LOG("CREATING %s cfg:%s ",name.c_str(),cfg_name.c_str());
+			//	PRAK_LOG("CREATING %s cfg:%s ",name.c_str(),cfg_name.c_str());
 
 				slab_slot[k][i][j]=new Cache(name,cfg_name,0,m_num_sets_per_slab,m_slab_assoc,64,r_policy,
 					    CacheBase::SHARED_CACHE,
@@ -82,54 +82,106 @@ SlabCntlr::SlabCntlr(
 			//PRAK_LOG("ISSLABoN1 0:%d 1:%d 2:%d 3:%d ",isSlabOn_1[i][0],isSlabOn_1[i][1],isSlabOn_1[i][2],isSlabOn_1[i][3]);
 		}
 	}
+
+	//print_stats();
+}
+
+void
+SlabCntlr ::print_stats()
+{
+	for(UInt32 i=0;i<16;i++)
+	{
+		PRAK_LOG("SLt_%d:%d SLt_%d:%d SLt_%d:%d SLt_%d:%d",(4*i),slot_access[0][4*i],(4*i+1),slot_access[0][4*i+1],(4*i+2),slot_access[0][4*i+2],(4*i+3),slot_access[0][4*i+3]);
+	}
+
+	for(UInt32 i=0;i<64;i++)
+	{
+		PRAK_LOG("S_%d_%d:%d S_%d_%d:%d  S_%d_%d:%d  S_%d_%d:%d ",i,0,access[0][i][0],i,1,access[0][i][1],i,2,access[0][i][2],i,3,access[0][i][3]);
+	}	
+}
+
+void
+SlabCntlr:: reset_stats()
+{
+	for(UInt32 i=0;i<m_num_slots;i++)
+	{	
+		slot_access[0][i]=0;
+
+		for(UInt32 j=0;j<m_num_slabs_per_slot;j++)
+		{
+			access[0][i][j]=0;
+
+			for(UInt32 s=0;s<m_num_sets_per_slab;s++)
+			{
+				a_pattern[0][i][j][s]=false;
+			}
+		}
+	}
 }
 
 void
 SlabCntlr:: reconfigure(core_id_t core_id)
-{		
+{	
+	//print_stats();
+	cntlr->getSlabLock().acquire();	
 	PRAK_LOG("In reconfiguration");	
 	for(UInt32 i=0;i< m_num_slots;i++)
-	{
+	{	
 		for(UInt32 j=1;j< m_num_slabs_per_slot;j++)
 		{
-			if(access[0][i][j] > 128 && isSlabOn[0][i][j]==false)
+			if(access[0][i][j] > 160 && isSlabOn[0][i][j]==false)
 			{
-				//isSlabOn[0][i][j]=true;
-
-				PRAK_LOG("TURN ON core:%d slot:%d slab :%d",0,i,j);
-				PRAK_LOG("DO BLOCK TRANSFER");
-
-				//m_block_transfer += cntlr->slab_transfer(0,i,0,j);
+				isSlabOn[0][i][j]=true;
+				PRAK_LOG("TURN ON core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
+				VERI_LOG("TURN ON core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
+				m_block_transfer += cntlr->slab_transfer(0,i,0,j);
+				PRAK_LOG("DONE BLOCK TRANSFER");
+				VERI_LOG("DONE BLOCK TRANSFER");
 			}
-			else if(access[0][i][j] < 30  && isSlabOn[0][i][j]==true)
+			else if(access[0][i][j] < 80  && isSlabOn[0][i][j]==true)
 			{
-				//isSlabOn[0][i][j]=false;
-
-				PRAK_LOG("TURN OFF core:%d slot:%d slab :%d",0,i,j);
-				PRAK_LOG("DO BLOCK TRANSFER OFF");
-				//m_block_transfer += cntlr->slab_transfer_off(0,i,j,0);
+				isSlabOn[0][i][j]=false;
+				PRAK_LOG("TURN OFF core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
+				VERI_LOG("TURN OFF core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
+				m_block_transfer += cntlr->slab_transfer_off(0,i,j,0);
+				PRAK_LOG("DONE BLOCK TRANSFER OFF");
+				VERI_LOG("DONE BLOCK TRANSFER OFF");
 			}
 		}	
 	}
 
-	PRAK_LOG("BLK_TRNSFER count:%d",m_block_transfer);
+	PRAK_LOG("BLK_TRNSFER:%d",m_block_transfer);
+	VERI_LOG("BLK_TRNSFER:%d",m_block_transfer);
 	m_block_transfer=0;
+	reset_stats();
+	cntlr->getSlabLock().release();
+//print_stats();
 }
 
 
 SlabCntlr::~SlabCntlr()
 {
+	PRAK_LOG("###In slab destructor###");
 	PRAK_LOG("Number of L2-access %d ",L2_access);
 	PRAK_LOG("Number of L2-hits %lld ",L2_hits);
-}
 
+/*
+	delete [] isSlabOn;
+	delete [] a_pattern;
+
+		delete [] access;
+		delete [] slot_access;
+		delete [] slab_slot;
+*/
+	
+}
 //---------------------------------------------------------------------------------
 
 
 
 
 UInt32 
-SlabCntlr::getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id) const
+SlabCntlr::getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id,UInt32 *slab_orig) const
 {
 	//-------------WORKING CHECKED WITH SCI-CALCULATOR------------
 
@@ -141,9 +193,13 @@ SlabCntlr::getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id) con
 	g_set_index=g_set_index>> m_log_num_sets_per_slab;//eliminate 4 bit local index ,now slab index + slot + tag remaining
 	g_set_index=g_set_index % m_num_slabs_per_slot; //take least significant two bits;
 
+	if(slab_orig!=NULL)
+	{
+		*slab_orig=g_set_index;
+	}
 	if(isSlabOn[0][slot_index][g_set_index])
 	{
-		//VERI_LOG("Getslab-s-addr:%x slab:%d slot:%d",addr,g_set_index,slot_index);
+		VERI_LOG("Getslab-success-addr:%x slab:%d slot:%d",addr,g_set_index,slot_index);
 		return g_set_index;
 	}
 	else
@@ -166,9 +222,9 @@ SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
 	 
 
 ///*
-	a_lock.acquire();
+	//a_lock.acquire();
 	L2_access+=1;
-	a_lock.release();
+	//a_lock.release();
 
 
    bool cache_hit = false;
@@ -194,9 +250,9 @@ SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
 
 	if(cache_hit)
 	{
-		c_lock.acquire();
+	//	c_lock.acquire();
 			L2_hits+=1;
-		c_lock.release();
+	//	c_lock.release();
 	}
 	
    return cache_hit;		
@@ -206,30 +262,35 @@ SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
 SharedCacheBlockInfo*
 SlabCntlr::getCacheBlockInfo_slab(IntPtr address,core_id_t m_core_id,bool record_stat)
 {
-	UInt32 slab_index,slot_index;//,set_index;
+	UInt32 slab_index,slot_index,slab_orig;
 
-	slab_index=getSlab(address,slot_index,0);
-/*
+	
+
 	if(record_stat)
 	{
-		b_lock.acquire();
-			slot_access[0][slot_index]+=1;
-			access[0][slot_index][g_set_index]+=1;
-			a_pattern[0][slot_index][g_set_index][set_index]=true;
-		b_lock.release();
-	}
+		slab_index=getSlab(address,slot_index,0,&slab_orig);
+		UInt32 set_index=getSetIndex(address);
 
-	if(isSlabOn[0][slot_index][g_set_index])
-	{
-		slab_index=g_set_index;
+		//b_lock.acquire();
+			slot_access[0][slot_index]+=1;
+			access[0][slot_index][slab_orig]+=1;
+			a_pattern[0][slot_index][slab_orig][set_index]=true;
+		//b_lock.release();
 	}
 	else
 	{
-		slab_index=0;
-	}
-*/
-	
+		slab_index=getSlab(address,slot_index,0);
+	}	
    return (SharedCacheBlockInfo*) slab_slot[0][slot_index][slab_index]->peekSingleLine(address);
+}
+
+UInt32 
+SlabCntlr:: getSetIndex(IntPtr addr)
+{
+
+	UInt32 set_index=addr>>m_log_blocksize;//eliminate 6 bit block offset;
+	set_index=set_index % m_num_sets_per_slab;
+	return set_index;
 }
 
 
