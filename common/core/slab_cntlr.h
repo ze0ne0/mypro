@@ -63,7 +63,7 @@ public:
 
 //------------------------------------------------
 		bool operationPermissibleinCache_slab(core_id_t m_core_id,
-               	IntPtr address, Core::mem_op_t mem_op_type, CacheBlockInfo **cache_block_info = NULL);
+               	IntPtr address, Core::mem_op_t mem_op_type, CacheBlockInfo **cache_block_info = NULL,bool record_stat=false);
 
 		UInt32 getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id,UInt32 *slab_orig=NULL) const;
 

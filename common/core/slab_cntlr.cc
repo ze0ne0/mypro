@@ -212,20 +212,13 @@ SlabCntlr::getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id,UInt
 
 bool 
 SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
-               IntPtr address, Core::mem_op_t mem_op_type, CacheBlockInfo **cache_block_info)
+               IntPtr address, Core::mem_op_t mem_op_type, CacheBlockInfo **cache_block_info,bool record_stat)
 {
  	CacheBlockInfo *block_info = getCacheBlockInfo_slab(address,0,true);
    // returns NULL if block doesn't exist in cache
 
    if (cache_block_info != NULL)
 	  *cache_block_info = block_info;
-	 
-
-///*
-	//a_lock.acquire();
-	L2_access+=1;
-	//a_lock.release();
-
 
    bool cache_hit = false;
    CacheState::cstate_t cstate = getCacheState_slab(block_info);
@@ -247,14 +240,19 @@ SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
    }
 
 //   MYLOG("address %lx state %c: permissible %d", address, CStateString(cstate), cache_hit);
+	if(record_stat)
+	{	
+		//a_lock.acquire();
+		L2_access+=1;			
+		//a_lock.release();
 
-	if(cache_hit)
-	{
-	//	c_lock.acquire();
-			L2_hits+=1;
-	//	c_lock.release();
+		if(cache_hit)
+		{
+		//	c_lock.acquire();
+				L2_hits+=1;
+		//	c_lock.release();
+		}
 	}
-	
    return cache_hit;		
 }
 

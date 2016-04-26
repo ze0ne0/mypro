@@ -861,7 +861,7 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
 //-------------------------------------------------------------------------------------------------------------------------
 //------------------------------------L2 ACCESS---STARTS
 
-/*__attribute__((unused))  */ bool cache_hit = m_master->m_slab_cntlr->operationPermissibleinCache_slab(0,address, mem_op_type), sibling_hit = false;
+/*__attribute__((unused))  */ bool cache_hit = m_master->m_slab_cntlr->operationPermissibleinCache_slab(0,address, mem_op_type,NULL,true), sibling_hit = false;
 
 //   bool cache_hit = operationPermissibleinCache(address, mem_op_type), sibling_hit = false;//prak-log-com
    bool first_hit = cache_hit;
