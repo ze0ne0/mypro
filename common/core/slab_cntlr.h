@@ -16,6 +16,7 @@
 #include "log.h"
 #include "core.h"
 #include "fault_injection.h"
+#include "subsecond_time.h"
 
 
 
@@ -39,9 +40,14 @@ private:
 
 		UInt32 ***access;
 
-		UInt64 L2_access,L2_hits;
+		UInt64 L2_access,L2_hits,Dram_access;
+		UInt64 mem_access,hits,dram_access;
 
+		SubsecondTime t_now,t_prev;
+		UInt32 num_reconf;
 		UInt32 **slot_access;
+
+		ShmemPerfModel* m_shmem_perf;
 
 		Lock a_lock,b_lock,c_lock,recon;	
 
@@ -56,6 +62,8 @@ private:
 		UInt32 m_log_blocksize;
 		UInt32 m_log_num_slabs_per_slot;
 		UInt32 m_log_num_sets_per_slab;
+
+
 	
 public:
 		void reconfigure(core_id_t core_id);
@@ -70,6 +78,17 @@ public:
 		bool **** getPattern()
 		{ 
 			return a_pattern;
+		}
+		void incrementDramAccess()
+		{
+			Dram_access+=1;
+			dram_access+=1;
+		}
+		int getActiveSlab();
+		int getSetCount(UInt32 slot,UInt32 slab);
+		void setPerfModel(ShmemPerfModel* shmem_perf)
+		{
+			m_shmem_perf=shmem_perf;
 		}
 
 	UInt32 getSlabAssoc(){return m_slab_assoc;}

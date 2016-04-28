@@ -4,6 +4,7 @@
 #include "log.h"
 
 
+
 SlabCntlr::SlabCntlr(
 	    String name,String cfg_name,
             core_id_t core_id,CacheCntlr *cc,
@@ -21,7 +22,10 @@ SlabCntlr::SlabCntlr(
 	String r_policy="lru";
 	String hash_function="mod";
 	m_num_cores=1;
-	L2_access=0;L2_hits=0;
+	L2_access=0;L2_hits=0;Dram_access=0;
+	mem_access=0;hits=0;dram_access=0;
+	num_reconf=0;
+	t_prev=t_now=SubsecondTime::Zero();
 
 //---------------------------------------------------------------------------------
 	m_log_blocksize = floorLog2(64);
@@ -103,6 +107,7 @@ SlabCntlr ::print_stats()
 void
 SlabCntlr:: reset_stats()
 {
+	mem_access=0;hits=0;dram_access=0;
 	for(UInt32 i=0;i<m_num_slots;i++)
 	{	
 		slot_access[0][i]=0;
@@ -119,19 +124,52 @@ SlabCntlr:: reset_stats()
 	}
 }
 
+int 
+SlabCntlr:: getSetCount(UInt32 slot,UInt32 slab)
+{
+	int count=0;
+	for(UInt32 i=0;i<m_num_sets_per_slab;i++)
+	{
+		if(a_pattern[0][slot][slab][i])
+			count++;
+	}	
+	return count;
+}
+
+int 
+SlabCntlr:: getActiveSlab()
+{
+	int count=0;
+	for(UInt32 i=0;i<m_num_slots;i++)
+	{	
+		for(UInt32 j=0;j<m_num_slabs_per_slot;j++)
+		{
+			if(isSlabOn[0][i][j]==true)
+			{
+				count++;
+			}
+	
+		}
+	}
+	return count;
+}
 void
 SlabCntlr:: reconfigure(core_id_t core_id)
 {	
 	//print_stats();
+	int active_slabs=getActiveSlab();
+
+	t_now = m_shmem_perf->getElapsedTime(ShmemPerfModel::_USER_THREAD);
+	
 	cntlr->getSlabLock().acquire();	
-	PRAK_LOG("In reconfiguration");	
+	PRAK_LOG("In reconfiguration earlier slab:%d t_now:%lld t_prev:%lld",active_slabs,t_now.getNS(),t_prev.getNS());	
 	for(UInt32 i=0;i< m_num_slots;i++)
 	{	
 		for(UInt32 j=1;j< m_num_slabs_per_slot;j++)
 		{
-			if(access[0][i][j] > 160 && isSlabOn[0][i][j]==false)
+			if(access[0][i][j] > 160 && getSetCount(i,j) > 8 && isSlabOn[0][i][j]==false)
 			{
-				isSlabOn[0][i][j]=true;
+				isSlabOn[0][i][j]=true;//active_slabs++;
 				PRAK_LOG("TURN ON core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
 				VERI_LOG("TURN ON core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
 				m_block_transfer += cntlr->slab_transfer(0,i,0,j);
@@ -140,7 +178,7 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 			}
 			else if(access[0][i][j] < 80  && isSlabOn[0][i][j]==true)
 			{
-				isSlabOn[0][i][j]=false;
+				isSlabOn[0][i][j]=false;//active_slabs--;
 				PRAK_LOG("TURN OFF core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
 				VERI_LOG("TURN OFF core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
 				m_block_transfer += cntlr->slab_transfer_off(0,i,j,0);
@@ -149,12 +187,18 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 			}
 		}	
 	}
-
-	PRAK_LOG("BLK_TRNSFER:%d",m_block_transfer);
-	VERI_LOG("BLK_TRNSFER:%d",m_block_transfer);
+	if(m_block_transfer>0)
+	{
+		PRAK_LOG("BLK_TRNSFER:%d",m_block_transfer);
+		VERI_LOG("BLK_TRNSFER:%d",m_block_transfer);
+	}
+	STAT_LOG("%d;%lld;%lld;%lld;%lld;%d;%d",num_reconf,t_now.getNS()-t_prev.getNS(),hits,mem_access-hits,dram_access,m_block_transfer,active_slabs);
 	m_block_transfer=0;
 	reset_stats();
+
 	cntlr->getSlabLock().release();
+	num_reconf+=1;
+	t_prev=t_now;
 //print_stats();
 }
 
@@ -164,6 +208,10 @@ SlabCntlr::~SlabCntlr()
 	PRAK_LOG("###In slab destructor###");
 	PRAK_LOG("Number of L2-access %d ",L2_access);
 	PRAK_LOG("Number of L2-hits %lld ",L2_hits);
+	PRAK_LOG("Number of DRAM ACCESS %lld ",Dram_access);
+//	STAT_LOG("1:%lld");
+	t_now = m_shmem_perf->getElapsedTime(ShmemPerfModel::_USER_THREAD);	
+	STAT_LOG("%d;%lld;%lld;%lld;%lld;%d;%d",num_reconf,t_now.getNS()-t_prev.getNS(),hits,mem_access-hits,dram_access,m_block_transfer,getActiveSlab());
 
 /*
 	delete [] isSlabOn;
@@ -214,7 +262,7 @@ bool
 SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
                IntPtr address, Core::mem_op_t mem_op_type, CacheBlockInfo **cache_block_info,bool record_stat)
 {
- 	CacheBlockInfo *block_info = getCacheBlockInfo_slab(address,0,true);
+ 	CacheBlockInfo *block_info = getCacheBlockInfo_slab(address,0,record_stat);
    // returns NULL if block doesn't exist in cache
 
    if (cache_block_info != NULL)
@@ -242,6 +290,7 @@ SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
 //   MYLOG("address %lx state %c: permissible %d", address, CStateString(cstate), cache_hit);
 	if(record_stat)
 	{	
+		mem_access+=1;
 		//a_lock.acquire();
 		L2_access+=1;			
 		//a_lock.release();
@@ -249,7 +298,7 @@ SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
 		if(cache_hit)
 		{
 		//	c_lock.acquire();
-				L2_hits+=1;
+				L2_hits+=1;hits+=1;
 		//	c_lock.release();
 		}
 	}

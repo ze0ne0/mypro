@@ -34,6 +34,7 @@ public:
 		UInt64 p_last_base_count;
 
 		IntPtr p_base_addr;
+		IntPtr p_mask;	
 		IntPtr p_last_base_addr;
 
 		Status state;				

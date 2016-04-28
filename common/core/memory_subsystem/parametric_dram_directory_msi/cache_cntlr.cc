@@ -186,6 +186,8 @@ CacheCntlr::CacheCntlr(MemComponent::component_t mem_component,
             	m_core_id,this,Sim()->getFaultinjectionManager()
                ? Sim()->getFaultinjectionManager()->getFaultInjector(m_core_id_master,mem_component)
                : NULL);
+		m_master->m_slab_cntlr->setPerfModel(shmem_perf_model);
+		STAT_LOG("SR.NO;TIME-INT;HITS;MISS;DRAM_ACCESS;BLOCK_TX;ACTIVE_SLABS");
 		}
 		else
 		{
@@ -1055,6 +1057,9 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
 
                Byte data_buf[getCacheBlockSize()];
                SubsecondTime latency;
+		
+		//---------------INCREMENT THE DRAM ACCESS
+		m_master->m_slab_cntlr->incrementDramAccess();
 
                // Do the DRAM access and increment local time
                boost::tie<HitWhere::where_t, SubsecondTime>(hit_where, latency) = accessDRAM(Core::READ, address, isPrefetch != Prefetch::NONE, data_buf);
@@ -1557,9 +1562,9 @@ CacheCntlr:: slab_transfer(core_id_t core_id,UInt32 slot_index,UInt32 src_slab,U
 {
 	Cache **** slab_slot=m_master->m_slab_cntlr->getSlabSlotPtr();
 	Byte data_buf[getCacheBlockSize()];
-	bool ****a_pattern=m_master->m_slab_cntlr->getPattern();
+//	bool ****a_pattern=m_master->m_slab_cntlr->getPattern();
 	CacheBlockInfo* cache_block_info;
-	CacheBlockInfo* cache_block;
+//	CacheBlockInfo* cache_block;
 
 	UInt32 m_associativity=m_master->m_slab_cntlr->getSlabAssoc();
 	//UInt32 m_log_blocksize=m_master->m_slab_cntlr->getSlab_m_log_blocksize();
@@ -1631,11 +1636,11 @@ CacheCntlr:: slab_transfer_off(core_id_t core_id,UInt32 slot_index,UInt32 src_sl
 {	
 	Cache **** slab_slot=m_master->m_slab_cntlr->getSlabSlotPtr();
 	Byte data_buf[getCacheBlockSize()];
-	bool ****a_pattern=m_master->m_slab_cntlr->getPattern();
+//	bool ****a_pattern=m_master->m_slab_cntlr->getPattern();
 	CacheBlockInfo* cache_block_info;CacheBlockInfo* cache_block;
 
 	UInt32 m_associativity=m_master->m_slab_cntlr->getSlabAssoc();
-	UInt32 m_log_blocksize=m_master->m_slab_cntlr->getSlab_m_log_blocksize();
+//	UInt32 m_log_blocksize=m_master->m_slab_cntlr->getSlab_m_log_blocksize();
 	UInt32 m_num_sets_per_slab=m_master->m_slab_cntlr->getSlab_m_num_sets_per_slab();
 
 	UInt32 blk_tx=0;

@@ -11,8 +11,9 @@ Dyn_reconf::Dyn_reconf(CacheCntlr* cc)
 	p_last_base_count=0;
 	p_base_addr=0;
 	p_last_base_addr=0;
+	p_mask=0x0003ffc0;
 	state=FIRST_CHANGE;
-	thresh_diff=3072;
+	thresh_diff=2450;
 	thresh_count=256;
 }
 
@@ -28,7 +29,8 @@ void Dyn_reconf:: processAddress(IntPtr address,core_id_t core_id)
 
 		if(p_base_addr!=0)
 		{
-			p_diff=p_base_addr-address;
+			p_diff=(p_base_addr&p_mask)-(address&p_mask);
+
 			p_diff=(p_diff>0)?p_diff:-p_diff;
 //			PRAK_LOG("b:%x c-a %x diff:%d \n",p_base_addr,address,p_diff);	
 	
@@ -80,7 +82,7 @@ void Dyn_reconf:: processAddress(IntPtr address,core_id_t core_id)
 			if(p_diff > thresh_diff)
 			{	//address is changing  again and again stay here 
 
-				int new_diff=p_last_base_addr-address;
+				int new_diff= (p_last_base_addr&p_mask) - (address&p_mask);
 				new_diff=(new_diff>0)?new_diff:-new_diff;
 				if(new_diff < thresh_diff)
 				{

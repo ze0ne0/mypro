@@ -28,6 +28,7 @@ class Log
 
       void log(ErrorState err, const char *source_file, SInt32 source_line, const char* format, ...);
       void praklog(ErrorState err, const char *source_file, SInt32 source_line,int which, const char* format, ...);//PRAKLOG
+      void statlog(ErrorState err, const char *source_file, SInt32 source_line,int which, const char* format, ...);//statLOG
 
       bool isEnabled(const char* module);
       bool isLoggingEnabled() const { return _anyLoggingEnabled; }
@@ -106,6 +107,10 @@ class Log
 #define _PRAKLOG1_PRINT(...) ((void)(0))
 #define VERI_LOG(...) ((void)(0))
 
+#define __PRAKLOG2_PRINT(...) ((void)(0))
+#define _PRAKLOG2_PRINT(...) ((void)(0))
+#define STAT_LOG(...) ((void)(0))
+
 
 #else
 
@@ -170,6 +175,26 @@ class Log
 
 #define VERI_LOG(...)                                                  \
    _PRAKLOG1_PRINT(Log::None, __VA_ARGS__);                                  \
+
+//--------------------------------------------------------------------------------
+
+//__________________________STAT_LOG______________________________________________
+#define __PRAKLOG2_PRINT(err, file, line, ...)                               		\
+   {                                                                    		\
+         String module = Log::getSingleton()->getModule(file);     			\
+	 if (1)            		\
+         {                                                              		\
+            Log::getSingleton()->statlog(err, module.c_str(), line,3, __VA_ARGS__); 	\
+         }  										\
+   }                                                                    		\
+
+#define _PRAKLOG2_PRINT(err, ...)                                            \
+   {                                                                    \
+   __PRAKLOG2_PRINT(err, __FILE__, __LINE__, __VA_ARGS__);                   \
+   }                                                                    \
+
+#define STAT_LOG(...)                                                  \
+   _PRAKLOG2_PRINT(Log::None, __VA_ARGS__);                                  \
 
 //--------------------------------------------------------------------------------
 
