@@ -15,6 +15,7 @@ Dyn_reconf::Dyn_reconf(CacheCntlr* cc)
 	state=FIRST_CHANGE;
 	thresh_diff=2450;
 	thresh_count=256;
+//	m_last_tx=0;
 }
 
 Dyn_reconf::~Dyn_reconf()

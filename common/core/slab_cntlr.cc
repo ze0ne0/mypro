@@ -24,7 +24,7 @@ SlabCntlr::SlabCntlr(
 	m_num_cores=1;
 	L2_access=0;L2_hits=0;Dram_access=0;
 	mem_access=0;hits=0;dram_access=0;
-	num_reconf=0;
+	num_reconf=0;m_last_tx=0;
 	t_prev=t_now=SubsecondTime::Zero();
 
 //---------------------------------------------------------------------------------
@@ -192,7 +192,8 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 		PRAK_LOG("BLK_TRNSFER:%d",m_block_transfer);
 		VERI_LOG("BLK_TRNSFER:%d",m_block_transfer);
 	}
-	STAT_LOG("%d;%lld;%lld;%lld;%lld;%d;%d",num_reconf,t_now.getNS()-t_prev.getNS(),hits,mem_access-hits,dram_access,m_block_transfer,active_slabs);
+	STAT_LOG("%d;%lld;%lld;%lld;%lld;%d;%d",num_reconf,t_now.getNS()-t_prev.getNS(),hits,mem_access-hits,dram_access,m_last_tx,active_slabs);
+	m_last_tx=m_block_transfer;
 	m_block_transfer=0;
 	reset_stats();
 
@@ -211,7 +212,7 @@ SlabCntlr::~SlabCntlr()
 	PRAK_LOG("Number of DRAM ACCESS %lld ",Dram_access);
 //	STAT_LOG("1:%lld");
 	t_now = m_shmem_perf->getElapsedTime(ShmemPerfModel::_USER_THREAD);	
-	STAT_LOG("%d;%lld;%lld;%lld;%lld;%d;%d",num_reconf,t_now.getNS()-t_prev.getNS(),hits,mem_access-hits,dram_access,m_block_transfer,getActiveSlab());
+	STAT_LOG("%d;%lld;%lld;%lld;%lld;%d;%d",num_reconf,t_now.getNS()-t_prev.getNS(),hits,mem_access-hits,dram_access,m_last_tx,getActiveSlab());
 
 /*
 	delete [] isSlabOn;
