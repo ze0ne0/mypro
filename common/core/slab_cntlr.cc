@@ -73,7 +73,7 @@ SlabCntlr::SlabCntlr(
 					    CacheBase::SHARED_CACHE,
 					    CacheBase::parseAddressHash(hash_function),fault_injector);	
 
-				isSlabOn[k][i][j]= j==0;
+				isSlabOn[k][i][j]=true;// j==0;
 				access[k][i][j]=0;
 				a_pattern[k][i][j]= new bool [m_num_sets_per_slab];
 				for(UInt32 s=0;s<m_num_sets_per_slab;s++)
@@ -167,7 +167,7 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 	{	
 		for(UInt32 j=1;j< m_num_slabs_per_slot;j++)
 		{
-			if(access[0][i][j] > 160 && getSetCount(i,j) > 6 && isSlabOn[0][i][j]==false)
+			if(access[0][i][j] > 100 && getSetCount(i,j) > 6 && isSlabOn[0][i][j]==false)
 			{
 				isSlabOn[0][i][j]=true;//active_slabs++;
 				PRAK_LOG("TURN ON core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
@@ -176,7 +176,7 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 				PRAK_LOG("DONE BLOCK TRANSFER");
 				VERI_LOG("DONE BLOCK TRANSFER");
 			}
-			else if(access[0][i][j] < 40  && isSlabOn[0][i][j]==true)
+			else if(access[0][i][j] < 40 && getSetCount(i,j) < 6 && isSlabOn[0][i][j]==true)
 			{
 				isSlabOn[0][i][j]=false;//active_slabs--;
 				PRAK_LOG("TURN OFF core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
