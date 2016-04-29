@@ -187,7 +187,7 @@ CacheCntlr::CacheCntlr(MemComponent::component_t mem_component,
                ? Sim()->getFaultinjectionManager()->getFaultInjector(m_core_id_master,mem_component)
                : NULL);
 		m_master->m_slab_cntlr->setPerfModel(shmem_perf_model);
-		STAT_LOG("SR.NO;TIME-INT;HITS;MISS;DRAM_ACCESS;BLOCK_TX;ACTIVE_SLABS");
+		STAT_LOG("SR.NO;TIME-INT;HITS;MISS;DRAM_ACCESS;BLOCK_TX;ACTIVE_SLABS");l2_a=0,l2_hits=0;dram_a=0;
 		}
 		else
 		{
@@ -308,7 +308,10 @@ m_master->m_cache = new Cache(name,
 CacheCntlr::~CacheCntlr()
 {
    if (isMasterCache())
-   {
+   {    if(m_mem_component==MemComponent::L2_CACHE)
+	{
+		PRAK_LOG("L2A:%lld l2hits:%lld dram_a:%lld",l2_a,l2_hits,dram_a);
+	}
       delete m_master;
    }
    delete m_shmem_perf;
@@ -700,7 +703,7 @@ CacheCntlr::copyDataFromNextLevel(Core::mem_op_t mem_op_type, IntPtr address, bo
 {
 	VERI_LOG("copyDataFromNextLevel called:%s c_in:%s",getName(),m_next_cache_cntlr->getName());
 
-   LOG_ASSERT_ERROR(m_next_cache_cntlr->m_master->m_slab_cntlr->operationPermissibleinCache_slab(0,address, mem_op_type),
+   LOG_ASSERT_ERROR(m_next_cache_cntlr->m_master->m_slab_cntlr->operationPermissibleinCache_slab(0,address, mem_op_type,NULL,false),
       "Tried to read from next-level cache, but data is already gone");
 
 //MYLOG("copyDataFromNextLevel l%d", m_mem_component);
@@ -864,6 +867,12 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
 //------------------------------------L2 ACCESS---STARTS
 
 /*__attribute__((unused))  */ bool cache_hit = m_master->m_slab_cntlr->operationPermissibleinCache_slab(0,address, mem_op_type,NULL,true), sibling_hit = false;
+
+	m_master->m_slab_cntlr->incrementStats(cache_hit);
+	l2_a+=1;
+	if(cache_hit)
+	{	l2_hits+=1;
+	}
 
 //   bool cache_hit = operationPermissibleinCache(address, mem_op_type), sibling_hit = false;//prak-log-com
    bool first_hit = cache_hit;
@@ -1059,7 +1068,7 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
                SubsecondTime latency;
 		
 		//---------------INCREMENT THE DRAM ACCESS
-		m_master->m_slab_cntlr->incrementDramAccess();
+		m_master->m_slab_cntlr->incrementDramAccess();dram_a+=1;
 
                // Do the DRAM access and increment local time
                boost::tie<HitWhere::where_t, SubsecondTime>(hit_where, latency) = accessDRAM(Core::READ, address, isPrefetch != Prefetch::NONE, data_buf);

@@ -167,7 +167,7 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 	{	
 		for(UInt32 j=1;j< m_num_slabs_per_slot;j++)
 		{
-			if(access[0][i][j] > 160 && getSetCount(i,j) > 8 && isSlabOn[0][i][j]==false)
+			if(access[0][i][j] > 160 && getSetCount(i,j) > 6 && isSlabOn[0][i][j]==false)
 			{
 				isSlabOn[0][i][j]=true;//active_slabs++;
 				PRAK_LOG("TURN ON core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
@@ -176,7 +176,7 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 				PRAK_LOG("DONE BLOCK TRANSFER");
 				VERI_LOG("DONE BLOCK TRANSFER");
 			}
-			else if(access[0][i][j] < 80  && isSlabOn[0][i][j]==true)
+			else if(access[0][i][j] < 40  && isSlabOn[0][i][j]==true)
 			{
 				isSlabOn[0][i][j]=false;//active_slabs--;
 				PRAK_LOG("TURN OFF core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
@@ -207,7 +207,7 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 SlabCntlr::~SlabCntlr()
 {
 	PRAK_LOG("###In slab destructor###");
-	PRAK_LOG("Number of L2-access %d ",L2_access);
+	PRAK_LOG("Number of L2-access %lld ",L2_access);
 	PRAK_LOG("Number of L2-hits %lld ",L2_hits);
 	PRAK_LOG("Number of DRAM ACCESS %lld ",Dram_access);
 //	STAT_LOG("1:%lld");
@@ -289,20 +289,22 @@ SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
    }
 
 //   MYLOG("address %lx state %c: permissible %d", address, CStateString(cstate), cache_hit);
-	if(record_stat)
+
+/*	if(record_stat)
 	{	
-		mem_access+=1;
-		//a_lock.acquire();
-		L2_access+=1;			
-		//a_lock.release();
+		
+		a_lock.acquire();
+		L2_access+=1;	mem_access+=1;		
+		a_lock.release();
 
 		if(cache_hit)
 		{
-		//	c_lock.acquire();
+			c_lock.acquire();
 				L2_hits+=1;hits+=1;
-		//	c_lock.release();
+			c_lock.release();
 		}
 	}
+*/
    return cache_hit;		
 }
 

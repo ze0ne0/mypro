@@ -227,6 +227,7 @@ namespace ParametricDramDirectoryMSI
          bool m_prefetch_on_prefetch_hit;
          bool m_l1_mshr;
 	 
+	 UInt64 l2_a,l2_hits,dram_a;
 
          struct {
            UInt64 loads, stores;

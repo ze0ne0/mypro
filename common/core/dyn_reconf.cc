@@ -13,8 +13,8 @@ Dyn_reconf::Dyn_reconf(CacheCntlr* cc)
 	p_last_base_addr=0;
 	p_mask=0x0003ffc0;
 	state=FIRST_CHANGE;
-	thresh_diff=2450;
-	thresh_count=256;
+	thresh_diff=1024;
+	thresh_count=128;
 //	m_last_tx=0;
 }
 
