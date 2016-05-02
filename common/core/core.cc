@@ -280,7 +280,7 @@ Core::readInstructionMemory(IntPtr address, UInt32 instruction_size)
 	p_count+=1;
 //	VERI_LOG("INC");
 	reconfigurator->incrementCount(address,m_core_id);
-	//fprintf(fptr,"0x%x:%lld\n",address,p_count);
+	//fprintf(fptr,"%x\n",address);
 //	VERI_LOG("INC2");
 //------------------------------
 

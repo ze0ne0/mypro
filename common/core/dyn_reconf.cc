@@ -15,6 +15,7 @@ Dyn_reconf::Dyn_reconf(CacheCntlr* cc)
 	state=FIRST_CHANGE;
 	thresh_diff=1024;
 	thresh_count=128;
+	tune_count=0;
 //	m_last_tx=0;
 }
 
@@ -71,10 +72,12 @@ void Dyn_reconf:: processAddress(IntPtr address,core_id_t core_id)
 				p_base_count+=1;
 				if(p_base_count > thresh_count)
 				{
-
-					PRAK_LOG("*--------------Change 1 of phase new b:%x------------------*",p_base_addr);
-					state=STABLE;
-					phase_change=true;
+		
+					PRAK_LOG("*---------CALLING TUNE------------------*");
+					m_last_level->getSlabCntlr()->startTuning(core_id);
+					state=PHASE_TUNING;
+//					state=STABLE;
+//					phase_change=true;
 				}
 			}
 		}	
@@ -106,12 +109,25 @@ void Dyn_reconf:: processAddress(IntPtr address,core_id_t core_id)
 				p_base_count+=1;
 				if(p_base_count > thresh_count)
 				{
-					PRAK_LOG("*--------------Change 2 of phase new b:%x------------------*",p_base_addr);
-					state=STABLE;
-					phase_change=true;
+					state=PHASE_TUNING;
+					PRAK_LOG("*---------CALLING TUNE------------------*");
+					m_last_level->getSlabCntlr()->startTuning(core_id);
+//					state=STABLE;
+//					phase_change=true;
 				}
 			}	
 			
+		}
+		else if(state==PHASE_TUNING)
+		{
+			tune_count+=1;
+			if(tune_count>=1024)
+			{		tune_count=0;
+					state=STABLE;
+					phase_change=true;
+					PRAK_LOG("*--------------Change of phase new b:%x------------------*",p_base_addr);
+			}
+
 		}
 	}
 	else

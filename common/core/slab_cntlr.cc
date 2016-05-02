@@ -156,7 +156,7 @@ SlabCntlr:: getActiveSlab()
 void
 SlabCntlr:: reconfigure(core_id_t core_id)
 {	
-	//print_stats();
+	print_stats();
 	int active_slabs=getActiveSlab();
 
 	t_now = m_shmem_perf->getElapsedTime(ShmemPerfModel::_USER_THREAD);
@@ -167,23 +167,23 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 	{	
 		for(UInt32 j=1;j< m_num_slabs_per_slot;j++)
 		{
-			if(access[0][i][j] > 100 && getSetCount(i,j) > 6 && isSlabOn[0][i][j]==false)
+			if(access[0][i][j] > 75 && getSetCount(i,j) > 6 && isSlabOn[0][i][j]==false)
 			{
 				isSlabOn[0][i][j]=true;//active_slabs++;
 				PRAK_LOG("TURN ON core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
 				VERI_LOG("TURN ON core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
 				m_block_transfer += cntlr->slab_transfer(0,i,0,j);
-				PRAK_LOG("DONE BLOCK TRANSFER");
-				VERI_LOG("DONE BLOCK TRANSFER");
+				//PRAK_LOG("DONE BLOCK TRANSFER");
+			//	VERI_LOG("DONE BLOCK TRANSFER");
 			}
-			else if(access[0][i][j] < 40 && getSetCount(i,j) < 6 && isSlabOn[0][i][j]==true)
+			else if(access[0][i][j] < 25 && getSetCount(i,j) < 6 && isSlabOn[0][i][j]==true)
 			{
 				isSlabOn[0][i][j]=false;//active_slabs--;
 				PRAK_LOG("TURN OFF core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
 				VERI_LOG("TURN OFF core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
 				m_block_transfer += cntlr->slab_transfer_off(0,i,j,0);
-				PRAK_LOG("DONE BLOCK TRANSFER OFF");
-				VERI_LOG("DONE BLOCK TRANSFER OFF");
+			//	PRAK_LOG("DONE BLOCK TRANSFER OFF");
+				//VERI_LOG("DONE BLOCK TRANSFER OFF");
 			}
 		}	
 	}
@@ -225,7 +225,30 @@ SlabCntlr::~SlabCntlr()
 	
 }
 //---------------------------------------------------------------------------------
+void
+SlabCntlr:: startTuning(core_id_t core_id)
+{
+	PRAK_LOG("BEFORE TUNING STATS");
+	print_stats();	
+	reset_stats();
+}
 
+
+void
+SlabCntlr:: incrementDramAccess()
+{
+	Dram_access+=1;
+	dram_access+=1;
+}
+void
+SlabCntlr:: incrementStats(bool cache_hit)
+{
+	L2_access+=1;	mem_access+=1;
+	if(cache_hit)
+	{
+		L2_hits+=1;hits+=1;
+	}
+}
 
 
 

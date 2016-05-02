@@ -12,7 +12,8 @@ public:
 	      	{
 		 STABLE = 0,
 		 FIRST_CHANGE,
-		 RE_CHANGE
+		 RE_CHANGE,
+		 PHASE_TUNING
 	      	};
 
 		Dyn_reconf(CacheCntlr* cc);
@@ -28,7 +29,8 @@ public:
 		UInt64 p_instruction_count;
 		int p_diff;
 		int thresh_diff;
-		UInt64 thresh_count;		
+		UInt64 thresh_count;
+		UInt64 tune_count;		
 
 		UInt64 p_base_count;
 		UInt64 p_last_base_count;

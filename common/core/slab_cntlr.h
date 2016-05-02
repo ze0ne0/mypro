@@ -79,19 +79,9 @@ public:
 		{ 
 			return a_pattern;
 		}
-		void incrementDramAccess()
-		{
-			Dram_access+=1;
-			dram_access+=1;
-		}
-		void incrementStats(bool cache_hit)
-		{
-			L2_access+=1;	mem_access+=1;
-			if(cache_hit)
-			{
-				L2_hits+=1;hits+=1;
-			}
-		}
+		void incrementDramAccess();
+		void incrementStats(bool cache_hit);
+		void startTuning(core_id_t core_id);
 		int getActiveSlab();
 		int getSetCount(UInt32 slot,UInt32 slab);
 		void setPerfModel(ShmemPerfModel* shmem_perf)
