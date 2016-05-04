@@ -312,10 +312,13 @@ m_master->m_cache = new Cache(name,
 CacheCntlr::~CacheCntlr()
 {
    if (isMasterCache())
-   {    if(m_mem_component==MemComponent::L2_CACHE)
+   {  
+/*
+  if(m_mem_component==MemComponent::L2_CACHE)
 	{
 		PRAK_LOG("L2A:%lld l2hits:%lld dram_a:%lld",l2_a,l2_hits,dram_a);
 	}
+*/
       delete m_master;
    }
    delete m_shmem_perf;
@@ -874,7 +877,7 @@ CacheCntlr::processShmemReqFromPrevCache(core_id_t m_core_id,CacheCntlr* request
 /*__attribute__((unused))  */ bool cache_hit = m_master->m_slab_cntlr->operationPermissibleinCache_slab(0,address, mem_op_type,NULL,true), sibling_hit = false;
 
 	m_master->m_slab_cntlr->incrementStats(cache_hit);
-	VERI_LOG("INCCC1L2A:%lld 2HITS:%lld",l2_a,l2_hits);
+//	VERI_LOG("INCCC1L2A:%lld 2HITS:%lld",l2_a,l2_hits);
 	l2_a+=1;
 	if(cache_hit)
 	{	l2_hits+=1;

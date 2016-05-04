@@ -236,14 +236,14 @@ SlabCntlr:: startTuning(core_id_t core_id)
 
 void
 SlabCntlr:: incrementDramAccess()
-{	VERI_LOG("INCDRAM1:%lld 2:%lld",Dram_access,dram_access);
+{	//VERI_LOG("INCDRAM1:%lld 2:%lld",Dram_access,dram_access);
 	Dram_access+=1;
 	dram_access+=1;
 }
 void
 SlabCntlr:: incrementStats(bool cache_hit)
 {
-	VERI_LOG("INCSTATS1:%lld 2:%lld",L2_access,mem_access);
+	//VERI_LOG("INCSTATS1:%lld 2:%lld",L2_access,mem_access);
 	L2_access+=1;	mem_access+=1;
 	if(cache_hit)
 	{
@@ -312,23 +312,7 @@ SlabCntlr::operationPermissibleinCache_slab(core_id_t m_core_id,
          break;
    }
 
-//   MYLOG("address %lx state %c: permissible %d", address, CStateString(cstate), cache_hit);
 
-/*	if(record_stat)
-	{	
-		
-		a_lock.acquire();
-		L2_access+=1;	mem_access+=1;		
-		a_lock.release();
-
-		if(cache_hit)
-		{
-			c_lock.acquire();
-				L2_hits+=1;hits+=1;
-			c_lock.release();
-		}
-	}
-*/
    return cache_hit;		
 }
 
