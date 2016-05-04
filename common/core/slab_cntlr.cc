@@ -167,7 +167,7 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 	{	
 		for(UInt32 j=1;j< m_num_slabs_per_slot;j++)
 		{
-			if(access[0][i][j] > 32 /*&& getSetCount(i,j) > 6*/ && isSlabOn[0][i][j]==false)
+			if(access[0][i][j] > 50 /*&& getSetCount(i,j) > 6*/ && isSlabOn[0][i][j]==false)
 			{
 				isSlabOn[0][i][j]=true;//active_slabs++;
 				PRAK_LOG("TURN ON core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);

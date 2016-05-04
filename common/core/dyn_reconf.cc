@@ -32,7 +32,7 @@ Dyn_reconf:: processAddress(core_id_t core_id)
 	{
 		p_base_count+=1;
 
-		if(p_base_count >=10000)
+		if(p_base_count >=25000)
 		{	p_base_count=0;
 
 			PRAK_LOG("CALLING PHASE TUNING");
@@ -46,7 +46,7 @@ Dyn_reconf:: processAddress(core_id_t core_id)
 	{
 		tune_count+=1;
 		
-		if(tune_count >= 4000)
+		if(tune_count >= 8000)
 		{	tune_count=0;
 			state=PHASE_CHANGE;
 		}
