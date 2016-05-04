@@ -40,8 +40,9 @@ namespace ParametricDramDirectoryMSI
          TLB *m_itlb, *m_dtlb, *m_stlb;
          ComponentLatency m_tlb_miss_penalty;
 
-	 Dyn_reconf * reconf_0;
-	 Dyn_reconf * reconf_1;
+//	 Dyn_reconf * reconf_0;
+
+//	 Dyn_reconf * reconf_1;
 
          bool m_tlb_miss_parallel;
 
@@ -107,8 +108,10 @@ namespace ParametricDramDirectoryMSI
          void enableModels();
          void disableModels();
 
-	 virtual Dyn_reconf * getReconfigurator(core_id_t m_core_id)
+/*	 virtual Dyn_reconf * getReconfigurator(core_id_t m_core_id)
 	 {
+		return reconf_0;
+
 		if(m_core_id==0)
 		{
 			return reconf_0;
@@ -118,8 +121,9 @@ namespace ParametricDramDirectoryMSI
 			return reconf_1;
 		}
 		return NULL;
+
 	 }
-	
+*/	
 
          core_id_t getShmemRequester(const void* pkt_data)
          { return ((PrL1PrL2DramDirectoryMSI::ShmemMsg*) pkt_data)->getRequester(); }

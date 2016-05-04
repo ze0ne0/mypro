@@ -161,13 +161,13 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 
 	t_now = m_shmem_perf->getElapsedTime(ShmemPerfModel::_USER_THREAD);
 	
-	cntlr->getSlabLock().acquire();	
+	//cntlr->getSlabLock().acquire();	
 	PRAK_LOG("In reconfiguration earlier slab:%d t_now:%lld t_prev:%lld",active_slabs,t_now.getNS(),t_prev.getNS());	
 	for(UInt32 i=0;i< m_num_slots;i++)
 	{	
 		for(UInt32 j=1;j< m_num_slabs_per_slot;j++)
 		{
-			if(access[0][i][j] > 75 && getSetCount(i,j) > 6 && isSlabOn[0][i][j]==false)
+			if(access[0][i][j] > 32 /*&& getSetCount(i,j) > 6*/ && isSlabOn[0][i][j]==false)
 			{
 				isSlabOn[0][i][j]=true;//active_slabs++;
 				PRAK_LOG("TURN ON core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
@@ -176,7 +176,7 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 				//PRAK_LOG("DONE BLOCK TRANSFER");
 			//	VERI_LOG("DONE BLOCK TRANSFER");
 			}
-			else if(access[0][i][j] < 25 && getSetCount(i,j) < 6 && isSlabOn[0][i][j]==true)
+			else if(access[0][i][j] < 15 && getSetCount(i,j) < 6 && isSlabOn[0][i][j]==true)
 			{
 				isSlabOn[0][i][j]=false;//active_slabs--;
 				PRAK_LOG("TURN OFF core:%d slot:%d slab :%d  NES ST:%d",0,i,j,isSlabOn[0][i][j]);
@@ -197,7 +197,7 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 	m_block_transfer=0;
 	reset_stats();
 
-	cntlr->getSlabLock().release();
+	//cntlr->getSlabLock().release();
 	num_reconf+=1;
 	t_prev=t_now;
 //print_stats();
@@ -236,13 +236,14 @@ SlabCntlr:: startTuning(core_id_t core_id)
 
 void
 SlabCntlr:: incrementDramAccess()
-{
+{	VERI_LOG("INCDRAM1:%lld 2:%lld",Dram_access,dram_access);
 	Dram_access+=1;
 	dram_access+=1;
 }
 void
 SlabCntlr:: incrementStats(bool cache_hit)
 {
+	VERI_LOG("INCSTATS1:%lld 2:%lld",L2_access,mem_access);
 	L2_access+=1;	mem_access+=1;
 	if(cache_hit)
 	{
@@ -271,7 +272,7 @@ SlabCntlr::getSlab(const IntPtr addr,UInt32 &slot_index,core_id_t m_core_id,UInt
 	}
 	if(isSlabOn[0][slot_index][g_set_index])
 	{
-		VERI_LOG("Getslab-success-addr:%x slab:%d slot:%d",addr,g_set_index,slot_index);
+	//	VERI_LOG("Getslab-success-addr:%x slab:%d slot:%d",addr,g_set_index,slot_index);
 		return g_set_index;
 	}
 	else

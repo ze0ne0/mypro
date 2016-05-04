@@ -12,10 +12,12 @@ Dyn_reconf::Dyn_reconf(CacheCntlr* cc)
 	p_base_addr=0;
 	p_last_base_addr=0;
 	p_mask=0x0003ffc0;
-	state=FIRST_CHANGE;
+	state=STABLE;
 	thresh_diff=1024;
 	thresh_count=128;
 	tune_count=0;
+	phase_change=false;
+	PRAK_LOG("INITIALIZING DYNAMIC RECONF");
 //	m_last_tx=0;
 }
 
@@ -23,6 +25,41 @@ Dyn_reconf::~Dyn_reconf()
 {
 }
 
+void
+Dyn_reconf:: processAddress(core_id_t core_id)
+{
+	if(state==STABLE)
+	{
+		p_base_count+=1;
+
+		if(p_base_count >=10000)
+		{	p_base_count=0;
+
+			PRAK_LOG("CALLING PHASE TUNING");
+			m_last_level->getSlabCntlr()->startTuning(core_id);
+
+			state=PHASE_TUNING;
+		}
+		
+	}
+	else if(state==PHASE_TUNING)
+	{
+		tune_count+=1;
+		
+		if(tune_count >= 4000)
+		{	tune_count=0;
+			state=PHASE_CHANGE;
+		}
+	}
+	else if(state==PHASE_CHANGE)
+	{
+		PRAK_LOG("PHASE CHNAGE OCCURED");
+		m_last_level->getSlabCntlr()->reconfigure(core_id);
+		state=STABLE;
+	}
+}
+
+/*
 void Dyn_reconf:: processAddress(IntPtr address,core_id_t core_id)
 {
 //	p_instruction_count=p_instruction_count;
@@ -31,7 +68,7 @@ void Dyn_reconf:: processAddress(IntPtr address,core_id_t core_id)
 
 		if(p_base_addr!=0)
 		{
-			p_diff=(p_base_addr/*&p_mask*/)-(address/*&p_mask*/);
+			p_diff=(p_base_addr)-(address);
 
 			p_diff=(p_diff>0)?p_diff:-p_diff;
 //			PRAK_LOG("b:%x c-a %x diff:%d \n",p_base_addr,address,p_diff);	
@@ -86,7 +123,7 @@ void Dyn_reconf:: processAddress(IntPtr address,core_id_t core_id)
 			if(p_diff > thresh_diff)
 			{	//address is changing  again and again stay here 
 
-				int new_diff= (p_last_base_addr/*&p_mask*/) - (address/*&p_mask*/);
+				int new_diff= (p_last_base_addr) - (address);
 				new_diff=(new_diff>0)?new_diff:-new_diff;
 				if(new_diff < thresh_diff)
 				{
@@ -140,13 +177,13 @@ void Dyn_reconf:: processAddress(IntPtr address,core_id_t core_id)
 		m_last_level->getSlabCntlr()->reconfigure(core_id);
 	}
 } 
+*/
 
-
-void Dyn_reconf:: incrementCount(IntPtr address,core_id_t core_id)
+void Dyn_reconf:: incrementCount(core_id_t core_id)
 {
 	p_instruction_count+=1;
 //	VERI_LOG("RE1");
-	processAddress(address,core_id);
+	processAddress(core_id);
 //	VERI_LOG("RE2");
 }
 

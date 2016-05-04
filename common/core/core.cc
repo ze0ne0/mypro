@@ -123,7 +123,7 @@ Core::Core(SInt32 id)
    m_performance_model = PerformanceModel::create(this);
 
 
-	reconfigurator= m_memory_manager->getReconfigurator(id);
+/*	reconfigurator= m_memory_manager->getReconfigurator(id);
 	if(reconfigurator==NULL)
 	{
 		PRAK_LOG("Can't initialize dyn_reconf\n");
@@ -132,7 +132,7 @@ Core::Core(SInt32 id)
 	{
 		PRAK_LOG("Initialized dyn_reconf\n");		
 	}
-
+*/
 
 	PRAK_LOG("Core construtor ends here");
 }
@@ -141,7 +141,7 @@ Core::~Core()
 {
 //-------------PRAK
 	fclose(getFileptr());
-	PRAK_LOG("Count:%lld core:%d \n",reconfigurator->getInstructionCount(),m_core_id);
+	PRAK_LOG("Count:%lld core:%d \n",p_count,m_core_id);
 	
 //-------------------------------------
 
@@ -279,7 +279,12 @@ Core::readInstructionMemory(IntPtr address, UInt32 instruction_size)
 //------------PRAK------------
 	p_count+=1;
 //	VERI_LOG("INC");
-	reconfigurator->incrementCount(address,m_core_id);
+/*
+	if(m_core_id==0)
+	{
+		reconfigurator->incrementCount(address,m_core_id);
+	}
+*/
 	//fprintf(fptr,"%x\n",address);
 //	VERI_LOG("INC2");
 //------------------------------

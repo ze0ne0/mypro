@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core.h"
+#include "dyn_reconf.h"
 #include "cache.h"
 #include "slab_cntlr.h"
 #include "prefetcher.h"
@@ -154,7 +155,7 @@ namespace ParametricDramDirectoryMSI
       private:
          Cache* m_cache;
 	 SlabCntlr *m_slab_cntlr;
-
+	 Dyn_reconf *reconf;
          Lock m_cache_lock;
 	 Lock lockme;
          Lock m_smt_lock; //< Only used in L1 cache, to protect against concurrent access from sibling SMT threads

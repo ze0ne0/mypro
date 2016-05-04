@@ -89,7 +89,7 @@ class MemoryManagerBase
       // Modeling
       virtual UInt32 getModeledLength(const void* pkt_data) = 0;
 
-		 virtual Dyn_reconf * getReconfigurator(core_id_t m_core_id)=0;
+//		 virtual Dyn_reconf * getReconfigurator(core_id_t m_core_id)=0;
 
       Core* getCore() { return m_core; }
 

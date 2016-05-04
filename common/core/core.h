@@ -20,7 +20,7 @@ class CheetahManager;
 #include "bbv_count.h"
 #include "cpuid.h"
 #include "hit_where.h"
-#include "dyn_reconf.h"
+
 
 struct MemoryResult {
    HitWhere::where_t hit_where;
@@ -149,7 +149,7 @@ class Core
       TopologyInfo *m_topology_info;
       CheetahManager *m_cheetah_manager;
 
-      Dyn_reconf *reconfigurator;	
+//      Dyn_reconf *reconfigurator;	
 
       State m_core_state;
 

@@ -407,8 +407,8 @@ MemoryManager::MemoryManager(Core* core,
    // Set up core topology information
    getCore()->getTopologyInfo()->setup(smt_cores, cache_parameters[m_last_level_cache].shared_cores);
 
-	reconf_0= new Dyn_reconf(getCacheCntlrAt(0,MemComponent::L2_CACHE));
-	reconf_1= new Dyn_reconf(getCacheCntlrAt(0,MemComponent::L2_CACHE));
+//	reconf_0= new Dyn_reconf(getCacheCntlrAt(0,MemComponent::L2_CACHE));
+//	reconf_1= new Dyn_reconf(getCacheCntlrAt(0,MemComponent::L2_CACHE));
 
 }
 

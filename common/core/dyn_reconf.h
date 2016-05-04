@@ -13,13 +13,14 @@ public:
 		 STABLE = 0,
 		 FIRST_CHANGE,
 		 RE_CHANGE,
-		 PHASE_TUNING
+		 PHASE_TUNING,
+		 PHASE_CHANGE
 	      	};
 
 		Dyn_reconf(CacheCntlr* cc);
 		~Dyn_reconf();
-		void incrementCount(IntPtr address,core_id_t core_id);
-		void processAddress(IntPtr address,core_id_t core_id);
+		void incrementCount(core_id_t core_id);
+		void processAddress(core_id_t core_id);
 		UInt64 getInstructionCount();
 		Status getState();
 	private:
@@ -38,6 +39,8 @@ public:
 		IntPtr p_base_addr;
 		IntPtr p_mask;	
 		IntPtr p_last_base_addr;
+
+		bool phase_change;
 
 		Status state;				
 	
