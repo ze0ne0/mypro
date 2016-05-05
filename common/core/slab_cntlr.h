@@ -84,6 +84,7 @@ public:
 		void startTuning(core_id_t core_id);
 		int getActiveSlab();
 		int getSetCount(UInt32 slot,UInt32 slab);
+		void setTime();
 		void setPerfModel(ShmemPerfModel* shmem_perf)
 		{
 			m_shmem_perf=shmem_perf;

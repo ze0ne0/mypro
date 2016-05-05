@@ -2,6 +2,7 @@
 #define __MEMORY_MANAGER_BASE_H__
 
 #include "core.h"
+#include "cache_cntlr.h"
 #include "network.h"
 #include "mem_component.h"
 #include "performance_model.h"
@@ -49,6 +50,9 @@ class MemoryManagerBase
             IntPtr address, UInt32 offset,
             Byte* data_buf, UInt32 data_length,
             Core::MemModeled modeled) = 0;
+
+	virtual	CacheCntlr* getCacheCntlrAt(core_id_t core_id, MemComponent::component_t mem_component)=0;
+
 
       virtual SubsecondTime coreInitiateMemoryAccessFast(core_id_t m_core_id,
             bool icache,

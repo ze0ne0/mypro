@@ -83,7 +83,7 @@ namespace ParametricDramDirectoryMSI
          AddressHomeLookup* getTagDirectoryHomeLookup() { return m_tag_directory_home_lookup; }
          AddressHomeLookup* getDramControllerHomeLookup() { return m_dram_controller_home_lookup; }
 
-         CacheCntlr* getCacheCntlrAt(core_id_t core_id, MemComponent::component_t mem_component) { return m_all_cache_cntlrs[CoreComponentType(core_id, mem_component)]; }
+         virtual CacheCntlr* getCacheCntlrAt(core_id_t core_id, MemComponent::component_t mem_component) { return m_all_cache_cntlrs[CoreComponentType(core_id, mem_component)]; }
          void setCacheCntlrAt(core_id_t core_id, MemComponent::component_t mem_component, CacheCntlr* cache_cntlr) { m_all_cache_cntlrs[CoreComponentType(core_id, mem_component)] = cache_cntlr; }
 
          HitWhere::where_t coreInitiateMemoryAccess(core_id_t m_core_id,

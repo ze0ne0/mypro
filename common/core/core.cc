@@ -278,6 +278,10 @@ Core::readInstructionMemory(IntPtr address, UInt32 instruction_size)
 
 //------------PRAK------------
 	p_count+=1;
+	if(p_count==1 && m_core_id==0)
+	{
+		m_memory_manager->getCacheCntlrAt(m_core_id, MemComponent::L2_CACHE)->getSlabCntlr()->setTime();
+	}
 //	VERI_LOG("INC");
 /*
 	if(m_core_id==0)

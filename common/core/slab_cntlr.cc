@@ -136,6 +136,13 @@ SlabCntlr:: getSetCount(UInt32 slot,UInt32 slab)
 	return count;
 }
 
+void
+SlabCntlr:: setTime()
+{
+	t_prev = m_shmem_perf->getElapsedTime(ShmemPerfModel::_USER_THREAD);
+	PRAK_LOG("initial time:%lld ",t_prev.getNS());
+}
+
 int 
 SlabCntlr:: getActiveSlab()
 {

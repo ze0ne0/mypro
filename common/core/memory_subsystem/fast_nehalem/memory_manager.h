@@ -30,6 +30,8 @@ namespace FastNehalem
             IntPtr tag = address >> CACHE_LINE_BITS;
             return (use_icache ? icache : dcache)->access(mem_op_type, tag);
          }
+	virtual	CacheCntlr* getCacheCntlrAt(core_id_t core_id, MemComponent::component_t mem_component)
+	{return NULL;}
    };
 }
 
