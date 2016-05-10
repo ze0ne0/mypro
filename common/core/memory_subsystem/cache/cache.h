@@ -12,6 +12,7 @@
 #include "core.h"
 #include "fault_injection.h"
 
+
 // Define to enable the set usage histogram
 //#define ENABLE_SET_USAGE_HIST
 
@@ -28,6 +29,7 @@ class Cache : public CacheBase
       cache_t m_cache_type;
 
       CacheSet** m_sets;
+	bool * isSlabOn;
       CacheSetInfo* m_set_info;//Follower sets
 //-------------PRAK-LOG-----------------------------
       CacheSetInfo* p_set_info;// Leader sets
@@ -77,6 +79,11 @@ CacheBlockInfo* peekSingleLine_slab_mod(UInt32 set_index);
 
       void enable() { m_enabled = true; }
       void disable() { m_enabled = false; }
+
+       void setStat(bool *m_isSlabOn)
+	{
+		isSlabOn=m_isSlabOn;
+	}
 };
 
 template <class T>

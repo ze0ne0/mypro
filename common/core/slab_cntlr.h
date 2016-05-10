@@ -35,13 +35,14 @@ private:
 		CacheCntlr *cntlr;
 		Cache ****slab_slot;
 
-		bool ***isSlabOn;
+		bool ****isSlabOn;
 		bool ****a_pattern;
 
 		UInt32 ***access;
+		UInt32 ****access_ex;
 
 		UInt64 L2_access,L2_hits,Dram_access;
-		UInt64 mem_access,hits,dram_access;
+		UInt64 mem_access,hits,dram_access,m_aux;
 
 		SubsecondTime t_now,t_prev;
 		UInt32 num_reconf;
