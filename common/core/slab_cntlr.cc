@@ -107,7 +107,7 @@ SlabCntlr ::print_stats()
 void
 SlabCntlr:: reset_stats()
 {
-	mem_access=0;hits=0;dram_access=0;
+	
 	for(UInt32 i=0;i<m_num_slots;i++)
 	{	
 		slot_access[0][i]=0;
@@ -203,7 +203,7 @@ SlabCntlr:: reconfigure(core_id_t core_id)
 	m_last_tx=m_block_transfer;
 	m_block_transfer=0;
 	reset_stats();
-
+	mem_access=0;hits=0;dram_access=0;
 	//cntlr->getSlabLock().release();
 	num_reconf+=1;
 	t_prev=t_now;
